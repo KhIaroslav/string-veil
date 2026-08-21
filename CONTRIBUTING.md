@@ -66,7 +66,8 @@ to the consumer's `settings.gradle.kts` (see the README's *Local development* se
 - Compiler-plugin changes should be covered by the integration tests that compile Kotlin through the
   plugin and assert both the runtime value and the **absence** of the plaintext in generated output.
 - Run `./gradlew test` before pushing. If you touched the container format or the native decoder,
-  run `:native-runtime:assembleRelease` and validate both decoders.
+  also run `./gradlew :native-differential:nativeDifferentialTest`, which decodes the same containers
+  through both the JVM and the C++ decoder and fails on any divergence.
 
 ## Commit and PR conventions
 

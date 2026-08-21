@@ -20,6 +20,7 @@ include(
     ":annotations",
     ":compiler-plugin",
     ":gradle-plugin",
+    ":native-differential",
     ":native-runtime",
     ":runtime",
 )

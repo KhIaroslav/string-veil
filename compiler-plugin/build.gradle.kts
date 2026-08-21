@@ -36,3 +36,18 @@ tasks.test {
     )
     useJUnitPlatform()
 }
+
+// Encodes the JVM<->native differential corpus. Runs the build-time cipher over every
+// DifferentialCorpus case, self-checks each container with the JVM decoder, and serializes the
+// containers so the `native-differential` module can decode the very same bytes with the C++ library.
+val generateDifferentialCorpus by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Encodes the differential corpus consumed by :native-differential."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("io.github.khiaroslav.stringveil.compiler.DifferentialCorpusGeneratorKt")
+
+    val corpusFile = layout.buildDirectory.file("differential/corpus.bin").get().asFile
+    outputs.file(corpusFile)
+    args(corpusFile.absolutePath)
+}

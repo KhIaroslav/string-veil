@@ -44,6 +44,7 @@ jobs:
         run: >-
           ./gradlew
           test
+          :native-differential:nativeDifferentialTest
           :native-runtime:assembleRelease
           :gradle-plugin:validatePlugins
           publishToMavenLocal

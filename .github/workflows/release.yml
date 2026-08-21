@@ -91,6 +91,7 @@ jobs:
           ./gradlew
           clean
           test
+          :native-differential:nativeDifferentialTest
           :native-runtime:assembleRelease
           :gradle-plugin:validatePlugins
           --stacktrace

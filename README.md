@@ -215,11 +215,24 @@ apply the plugin using the version from `VERSION_NAME` in `gradle.properties`.
 ## Building and testing
 
 ```bash
-./gradlew test :native-runtime:assembleRelease :gradle-plugin:validatePlugins publishToMavenLocal
+./gradlew test :native-differential:nativeDifferentialTest :native-runtime:assembleRelease :gradle-plugin:validatePlugins publishToMavenLocal
 ```
 
 Building `native-runtime` from source requires an installed Android NDK. Set `STRING_VEIL_NDK_HOME`
 (or `stringVeilNdkDir`) when the NDK cannot be found through `local.properties`.
+
+### Differential decoder testing
+
+The Kotlin (`runtime`) and C++ (`native-runtime`) decoders are two independent implementations of
+the same container format, so they are tested to agree byte-for-byte:
+
+- `StringCipherRoundTripTest` (in `compiler-plugin`) round-trips a broad corpus — every method,
+  `RANDOM_ALL`/`RANDOM_SELECTED`, repetitions `1..16`, ASCII/Unicode/emoji/control bytes, plus 500
+  randomized fuzz cases — through the build-time cipher and the JVM decoder.
+- `:native-differential:nativeDifferentialTest` host-compiles the C++ decoder into a shared library
+  and decodes the *same* containers with it, asserting they match the JVM result. It runs
+  automatically wherever a C++ toolchain and JNI headers are present (including CI) and is skipped
+  gracefully elsewhere — no Android device or emulator required.
 
 ## Publishing
 

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project documentation and open-source scaffolding: threat-model-first `README`, `SECURITY.md`
   (threat model + private vulnerability disclosure), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue
   and pull-request templates, `CODEOWNERS`, and Dependabot configuration.
+- Differential decoder testing that proves the JVM (`runtime`) and native (`native-runtime`)
+  decoders agree on identical containers: a broad JVM round-trip corpus (`StringCipherRoundTripTest`)
+  plus a new `native-differential` module that host-compiles the C++ decoder and cross-checks the
+  same containers without an Android device. Both run in CI.
 
 ### Changed
 
