@@ -1,7 +1,11 @@
-@file:OptIn(org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI::class)
+@file:OptIn(
+    org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI::class,
+    io.github.khiaroslav.stringveil.format.InternalStringVeilApi::class,
+)
 
 package io.github.khiaroslav.stringveil.compiler
 
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.MAX_REPETITIONS
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext

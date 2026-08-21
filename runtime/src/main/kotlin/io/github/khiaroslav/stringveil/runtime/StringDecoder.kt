@@ -1,5 +1,36 @@
+@file:OptIn(InternalStringVeilApi::class)
+
 package io.github.khiaroslav.stringveil.runtime
 
+import io.github.khiaroslav.stringveil.format.InternalStringVeilApi
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.AES_IV_BYTES
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.AES_KEY_BYTES
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.AES_TRANSFORMATION
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.BASE64_MASK
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.CONTAINER_OVERHEAD
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.DELTAS
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.HEADER_A
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.HEADER_B
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.HEADER_WORDS
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.KEY_WORDS
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.MAX_REPETITIONS
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.METADATA_WORDS
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.MIX_GOLDEN
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.PIPELINE_MAGIC
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.PIPELINE_VERSION
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.ROUNDS
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.SHIFT_MASK
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.checksum
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.coprimeStep
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.headerCheck
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.keyMask
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.maskWord
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.mix32
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.outerVariant
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.roundFunction
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.storageMask
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.streamByte
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.xorStream
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -84,6 +115,8 @@ public object StringDecoder {
     }
 }
 
+private val MIN_CONTAINER_WORDS = (METADATA_WORDS + 2) * 2 + CONTAINER_OVERHEAD
+
 private fun decodePipeline(pipeline: ByteArray): String {
     val cursor = ByteCursor(pipeline)
     if (cursor.readInt() != PIPELINE_MAGIC || cursor.readByte() != PIPELINE_VERSION) {
@@ -123,10 +156,10 @@ private fun decodePipeline(pipeline: ByteArray): String {
 private fun decodeLayer(layer: LayerDescriptor, input: ByteArray): ByteArray =
     when (layer.method) {
         PipelineMethod.BIT_SHIFT -> input.unmaskAndRotate(layer.parameters.toInt())
-        PipelineMethod.BIT_XOR -> input.xorStream(layer.parameters.toInt())
+        PipelineMethod.BIT_XOR -> xorStream(input, layer.parameters.toInt())
         PipelineMethod.BASE64 -> {
             val seed = layer.parameters.toInt()
-            val unmasked = input.xorStream(seed xor BASE64_MASK)
+            val unmasked = xorStream(input, seed xor BASE64_MASK)
             try {
                 decodeBase64(unmasked)
             } finally {
@@ -210,14 +243,6 @@ private fun ByteArray.unmaskAndRotate(seed: Int): ByteArray =
         ((rotated ushr shift) or (rotated shl (8 - shift))).toByte()
     }
 
-private fun ByteArray.xorStream(seed: Int): ByteArray =
-    ByteArray(size) { index ->
-        (this[index].toInt() xor streamByte(seed, index)).toByte()
-    }
-
-private fun streamByte(seed: Int, index: Int): Int =
-    mix32(seed + (index + 1) * MIX_GOLDEN + Integer.rotateLeft(index, index and 15)) ushr 24
-
 private fun ByteArray.toInt(): Int {
     if (size != 4) invalidContainer()
     return ((this[0].toInt() and 0xFF) shl 24) or
@@ -263,103 +288,6 @@ private fun base64Value(byte: Byte): Int =
 
 private fun invalidContainer(): Nothing = throw IllegalArgumentException("Invalid protected string")
 
-private const val MAX_REPETITIONS = 16
-private const val PIPELINE_MAGIC = 0x53564C32
-private const val PIPELINE_VERSION = 1
-private const val AES_KEY_BYTES = 16
-private const val AES_IV_BYTES = 16
-private const val AES_TRANSFORMATION = "AES/CTR/NoPadding"
-private const val BASE64_MASK = 0x346D2A11
-private const val SHIFT_MASK = 0x51ED270B
-
-private const val HEADER_WORDS = 4
-private const val KEY_WORDS = 4
-private const val METADATA_WORDS = 2 + KEY_WORDS
-private const val CONTAINER_OVERHEAD = 7
-private const val MIN_CONTAINER_WORDS = (METADATA_WORDS + 2) * 2 + CONTAINER_OVERHEAD
-private const val HEADER_A = 0x6D2B79F5
-private val HEADER_B = 0xA5B35705.toInt()
-private const val HEADER_C = 0x7F4A7C15
-private const val MIX_GOLDEN = -0x61C88647
-private const val MIX_MURMUR_1 = -0x7A143595
-private const val MIX_MURMUR_2 = -0x3D4D51CB
-private const val MIX_ODD = 0x27D4EB2D
-
-private fun outerVariant(seedA: Int, seedB: Int): Int =
-    ((seedA xor Integer.rotateLeft(seedB, 9)) ushr 1) and 3
-
-private fun headerCheck(seedA: Int, seedB: Int, size: Int): Int =
-    mix32(seedA xor Integer.rotateLeft(seedB, 7) xor size) xor HEADER_C
-
-private fun keyMask(seedA: Int, seedB: Int, index: Int, variant: Int): Int =
-    maskWord(seedA, seedB, index * 19 + 5, variant) xor
-        Integer.rotateLeft(seedB + MIX_ODD * (index + 1), index * 7 + 3)
-
-private fun storageMask(
-    seedA: Int,
-    seedB: Int,
-    index: Int,
-    position: Int,
-    variant: Int,
-): Int =
-    maskWord(
-        seedA xor (position + 1) * MIX_MURMUR_2,
-        seedB + (index + 1) * MIX_ODD,
-        index xor position,
-        variant,
-    )
-
-private fun maskWord(
-    seedA: Int,
-    seedB: Int,
-    index: Int,
-    variant: Int,
-): Int {
-    val base = mix32(seedA + index * MIX_GOLDEN) xor
-        Integer.rotateLeft(seedB, (index * 7 + variant * 3) and 31)
-    return when (variant) {
-        0 -> mix32(base xor MIX_ODD)
-        1 -> Integer.rotateLeft(mix32(base + MIX_MURMUR_1), 9)
-        2 -> mix32(base xor Integer.rotateRight(seedA, (index + 11) and 31))
-        else -> mix32(base + Integer.rotateLeft(seedB, (index + 17) and 31)) xor MIX_MURMUR_2
-    }
-}
-
-private fun checksum(value: ByteArray, seedA: Int, seedB: Int): Int {
-    var hash = seedA xor Integer.rotateLeft(seedB, 11) xor value.size
-    value.forEach { byte ->
-        hash = (hash xor (byte.toInt() and 0xFF)) * 0x01000193
-        hash = Integer.rotateLeft(hash, 5) + MIX_GOLDEN
-    }
-    return mix32(hash)
-}
-
-private fun coprimeStep(modulus: Int, seed: Int): Int {
-    var candidate = Math.floorMod(mix32(seed), modulus - 1) + 1
-    while (gcd(candidate, modulus) != 1) {
-        candidate = candidate % (modulus - 1) + 1
-    }
-    return candidate
-}
-
-private fun gcd(left: Int, right: Int): Int {
-    var a = left
-    var b = right
-    while (b != 0) {
-        val remainder = a % b
-        a = b
-        b = remainder
-    }
-    return a
-}
-
-private fun mix32(input: Int): Int {
-    var value = input
-    value = (value xor (value ushr 16)) * MIX_MURMUR_1
-    value = (value xor (value ushr 13)) * MIX_MURMUR_2
-    return value xor (value ushr 16)
-}
-
 private fun decryptWords(words: IntArray, key: IntArray, variant: Int) {
     val delta = DELTAS[variant]
     val rounds = ROUNDS[variant]
@@ -389,17 +317,6 @@ private fun decryptWords(words: IntArray, key: IntArray, variant: Int) {
     }
 }
 
-private fun roundFunction(value: Int, sum: Int, key: Int, variant: Int): Int =
-    when (variant) {
-        0 -> (((value shl 4) xor (value ushr 5)) + value) xor (sum + key)
-        1 -> (((value shl 5) xor (value ushr 3)) + Integer.rotateLeft(value, 1)) xor
-            (sum + key)
-        2 -> (Integer.rotateLeft(value, 4) + (value xor (value ushr 7))) xor
-            (sum + key)
-        else -> ((Integer.rotateLeft(value, 3) xor Integer.rotateRight(value, 6)) + value) xor
-            (sum + key)
-    }
-
 private fun IntArray.toBytes(): ByteArray =
     ByteArray(size * 4).also { bytes ->
         forEachIndexed { wordIndex, word ->
@@ -410,11 +327,3 @@ private fun IntArray.toBytes(): ByteArray =
             bytes[offset + 3] = (word ushr 24).toByte()
         }
     }
-
-private val DELTAS = intArrayOf(
-    MIX_GOLDEN,
-    0x7F4A7C15,
-    0x6A09E667,
-    0xBB67AE85.toInt(),
-)
-private val ROUNDS = intArrayOf(32, 36, 40, 44)

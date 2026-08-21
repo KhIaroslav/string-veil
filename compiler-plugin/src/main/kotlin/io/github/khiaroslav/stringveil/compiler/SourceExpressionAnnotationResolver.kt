@@ -1,5 +1,8 @@
+@file:OptIn(io.github.khiaroslav.stringveil.format.InternalStringVeilApi::class)
+
 package io.github.khiaroslav.stringveil.compiler
 
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.MAX_REPETITIONS
 import java.nio.file.Files
 import java.nio.file.Path
 import org.jetbrains.kotlin.com.intellij.psi.tree.IElementType

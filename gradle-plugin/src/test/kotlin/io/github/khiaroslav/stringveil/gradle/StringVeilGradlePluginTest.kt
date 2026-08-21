@@ -95,6 +95,13 @@ class StringVeilGradlePluginTest {
             repositoryDir,
             StringVeilCoordinates.COMPILER_PLUGIN_ARTIFACT,
             requiredJar("stringVeil.compilerPluginJar"),
+            dependencies = listOf(
+                MavenDependency(
+                    groupId = StringVeilCoordinates.GROUP,
+                    artifactId = StringVeilCoordinates.RUNTIME_ARTIFACT,
+                    version = StringVeilCoordinates.VERSION,
+                ),
+            ),
         )
         installArtifact(
             repositoryDir,

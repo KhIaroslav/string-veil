@@ -12,8 +12,11 @@ kotlin {
 dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
 
+    // The build-time cipher shares StringVeilFormat with the runtime decoder, so the plugin needs
+    // :runtime on the compiler classpath (resolved transitively through the plugin artifact).
+    implementation(project(":runtime"))
+
     testImplementation(project(":annotations"))
-    testImplementation(project(":runtime"))
     testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
     testImplementation(kotlin("test"))
 }
