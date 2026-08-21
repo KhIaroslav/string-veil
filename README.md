@@ -177,12 +177,13 @@ random padding, masked key material, a sparse permutation, decoy words, and an A
 
 - `AUTO` (default) — JNI on Android, the Kotlin/JVM decoder elsewhere.
 - `NATIVE` — requires an Android compilation and fails the build if `native-runtime` is unavailable.
-- `JVM` — forces the portable Kotlin decoder. On Android, add the `runtime` artifact explicitly; it
-  is intentionally not packaged by default so the Kotlin decoder is absent from native APKs.
+- `JVM` — forces the portable Kotlin decoder everywhere.
 
-The Android AAR packages `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`. The native decoder raises
-the cost of static analysis further, but an attacker can still hook the JNI bridge or read the
-decoded value from memory — the threat model above still applies.
+The Android AAR packages `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`, and the plugin always adds
+the `runtime` artifact on Android as well. If the native library cannot be loaded for the device's
+ABI, `NativeStringDecoder.decode` transparently falls back to the JVM decoder instead of crashing.
+The native decoder raises the cost of static analysis further, but an attacker can still hook the
+JNI bridge or read the decoded value from memory — the threat model above still applies.
 
 ## How it works
 

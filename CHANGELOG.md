@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoders agree on identical containers: a broad JVM round-trip corpus (`StringCipherRoundTripTest`)
   plus a new `native-differential` module that host-compiles the C++ decoder and cross-checks the
   same containers without an Android device. Both run in CI.
+### Fixed
+
+- The Android JNI bridge no longer crashes class initialization with `UnsatisfiedLinkError` when the
+  native library is unavailable for the device's ABI: `NativeStringDecoder.decode` now loads the
+  library defensively and falls back to the JVM `StringDecoder`. The `runtime` artifact is therefore
+  always added on Android as well.
 
 ### Changed
 

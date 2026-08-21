@@ -24,6 +24,12 @@ java {
     }
 }
 
+dependencies {
+    // NativeStringDecoder falls back to StringDecoder, so the runtime decoder must be on the
+    // classpath for both compilation and the forked runner.
+    implementation(project(":runtime"))
+}
+
 // Reuse the real JNI bridge so the class name matches the native RegisterNatives binding exactly.
 sourceSets {
     main {

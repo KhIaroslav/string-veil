@@ -63,12 +63,13 @@ public class StringVeilGradlePlugin : KotlinCompilerPluginSupportPlugin {
                 IMPLEMENTATION_CONFIGURATION,
                 module(StringVeilCoordinates.NATIVE_RUNTIME_ARTIFACT),
             )
-        } else {
-            target.dependencies.add(
-                IMPLEMENTATION_CONFIGURATION,
-                module(StringVeilCoordinates.RUNTIME_ARTIFACT),
-            )
         }
+        // The runtime decoder is always added: on JVM it is the decoder, and on Android it is the
+        // fallback used when the native library is unavailable for the device's ABI.
+        target.dependencies.add(
+            IMPLEMENTATION_CONFIGURATION,
+            module(StringVeilCoordinates.RUNTIME_ARTIFACT),
+        )
     }
 
     private companion object {

@@ -35,6 +35,15 @@ public final class NativeDifferentialRunner {
             System.exit(2);
         }
 
+        // Guard against a false pass: if the native library did not load, decode() would silently
+        // fall back to the JVM decoder and this test would compare the JVM against itself.
+        if (!NativeStringDecoder.isNativeAvailable()) {
+            System.err.println(
+                    "native library did not load; refusing to run the differential test against the "
+                            + "JVM fallback. Check -Djava.library.path and the compiled library.");
+            System.exit(2);
+        }
+
         int count;
         int failures = 0;
         try (DataInputStream in =
