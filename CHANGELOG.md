@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoders agree on identical containers: a broad JVM round-trip corpus (`StringCipherRoundTripTest`)
   plus a new `native-differential` module that host-compiles the C++ decoder and cross-checks the
   same containers without an Android device. Both run in CI.
+- Compile-time warning when an `@Obfuscate` literal looks like a real secret (AWS/GitHub/Google/Slack
+  tokens, private-key blocks, JWTs, high-entropy tokens), with `stringVeil.failOnSecretLikeLiterals`
+  to escalate it to a build error.
+
 ### Fixed
 
 - The Android JNI bridge no longer crashes class initialization with `UnsatisfiedLinkError` when the

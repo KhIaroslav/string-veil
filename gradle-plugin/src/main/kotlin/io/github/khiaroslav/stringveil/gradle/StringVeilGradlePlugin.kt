@@ -39,6 +39,10 @@ public class StringVeilGradlePlugin : KotlinCompilerPluginSupportPlugin {
                     value = (kotlinCompilation.platformType == KotlinPlatformType.androidJvm)
                         .toString(),
                 ),
+                SubpluginOption(
+                    key = "failOnSecretLikeLiterals",
+                    value = extension.failOnSecretLikeLiterals.getOrElse(false).toString(),
+                ),
             )
         }
 

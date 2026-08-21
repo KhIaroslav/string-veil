@@ -173,6 +173,19 @@ random padding, masked key material, a sparse permutation, decoy words, and an A
 `@Obfuscate` on a class, function, or property applies to the string literals in its scope.
 `@DoNotObfuscate` excludes a nested declaration or expression from an enclosing `@Obfuscate` scope.
 
+### Secret-like literal warnings
+
+Because String Veil is obfuscation and not encryption, the plugin warns at compile time when an
+annotated literal looks like a real secret (AWS/GitHub/Google/Slack tokens, private-key blocks,
+JWTs, or high-entropy tokens). Treat the warning as a prompt to move the value server-side. To
+hard-fail such builds instead:
+
+```kotlin
+stringVeil {
+    failOnSecretLikeLiterals = true
+}
+```
+
 ## Decoder engines
 
 - `AUTO` (default) — JNI on Android, the Kotlin/JVM decoder elsewhere.

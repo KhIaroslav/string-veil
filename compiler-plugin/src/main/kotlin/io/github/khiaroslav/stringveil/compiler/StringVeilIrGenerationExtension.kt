@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrStatement
@@ -42,6 +43,7 @@ import org.jetbrains.kotlin.name.Name
 internal class StringVeilIrGenerationExtension(
     private val messageCollector: MessageCollector,
     private val nativeAvailable: Boolean = false,
+    private val failOnSecretLikeLiterals: Boolean = false,
     private val cipher: StringCipher = LayeredStringCipher(),
 ) : IrGenerationExtension {
     override fun generate(
@@ -64,6 +66,7 @@ internal class StringVeilIrGenerationExtension(
             cipher = cipher,
             messageCollector = messageCollector,
             nativeAvailable = nativeAvailable,
+            failOnSecretLikeLiterals = failOnSecretLikeLiterals,
         )
         moduleFragment.transformChildrenVoid(transformer)
 
@@ -82,6 +85,7 @@ private class StringLiteralTransformer(
     private val cipher: StringCipher,
     private val messageCollector: MessageCollector,
     private val nativeAvailable: Boolean,
+    private val failOnSecretLikeLiterals: Boolean,
 ) : IrElementTransformerVoidWithContext() {
     var transformed: Int = 0
         private set
@@ -165,6 +169,24 @@ private class StringLiteralTransformer(
             return expression
         }
 
+        SecretLiteralHeuristics.detect(value)?.let { reason ->
+            messageCollector.report(
+                if (failOnSecretLikeLiterals) {
+                    CompilerMessageSeverity.ERROR
+                } else {
+                    CompilerMessageSeverity.WARNING
+                },
+                "string-veil: this @Obfuscate literal looks like $reason. String Veil is obfuscation, " +
+                    "not encryption or a secrets store, and cannot keep a real secret safe on the " +
+                    "client (see SECURITY.md). Move it server-side or inject it at runtime.",
+                secretWarningLocation(expression),
+            )
+            if (failOnSecretLikeLiterals) {
+                skipped++
+                return expression
+            }
+        }
+
         val config = expressionConfig ?: scope.config
         val engine = when (config.engine) {
             ProtectionEngine.AUTO -> if (nativeAvailable) ProtectionEngine.NATIVE else ProtectionEngine.JVM
@@ -236,6 +258,16 @@ private class StringLiteralTransformer(
             val parameters = symbol.owner.parameters.filter { it.kind == IrParameterKind.Regular }
             arguments[parameters.single()] = builder.irIntArray(encrypted.container)
         }
+    }
+
+    private fun secretWarningLocation(expression: IrConst): CompilerMessageLocation? {
+        val fileEntry = currentFile.fileEntry
+        return CompilerMessageLocation.create(
+            fileEntry.name,
+            fileEntry.getLineNumber(expression.startOffset) + 1,
+            fileEntry.getColumnNumber(expression.startOffset) + 1,
+            null,
+        )
     }
 
     private fun DeclarationIrBuilder.irIntArray(values: IntArray): IrExpression =
