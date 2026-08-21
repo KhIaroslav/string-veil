@@ -78,6 +78,11 @@ val sourcesJar by tasks.registering(Jar::class) {
     from("src/main/cpp")
 }
 
+val javadocJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("javadoc")
+    from(rootProject.file("README.md"))
+}
+
 val releaseAar by tasks.registering(Zip::class) {
     dependsOn(classesJar, compileNative)
     archiveBaseName.set(project.name)
@@ -113,6 +118,7 @@ publishing {
                 extension = "aar"
             }
             artifact(sourcesJar)
+            artifact(javadocJar)
             pom {
                 packaging = "aar"
                 name.set("String Veil Native Runtime")

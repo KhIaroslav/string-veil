@@ -1,5 +1,8 @@
+import org.gradle.plugin.compatibility.compatibility
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.plugin.publish)
     `java-gradle-plugin`
     `maven-publish`
 }
@@ -17,6 +20,9 @@ dependencies {
 }
 
 gradlePlugin {
+    website.set("https://github.com/KhIaroslav/string-veil")
+    vcsUrl.set("https://github.com/KhIaroslav/string-veil.git")
+
     plugins {
         create("stringVeil") {
             id = "io.github.khiaroslav.string-veil"
@@ -24,6 +30,12 @@ gradlePlugin {
                 "io.github.khiaroslav.stringveil.gradle.StringVeilGradlePlugin"
             displayName = "String Veil"
             description = "Selective Kotlin string obfuscation"
+            tags.set(listOf("kotlin", "android", "obfuscation", "security"))
+            compatibility {
+                features {
+                    configurationCache = true
+                }
+            }
         }
     }
 }

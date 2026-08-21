@@ -2,6 +2,8 @@
 
 Selective Kotlin/Android string obfuscation driven by `@Obfuscate` annotations.
 
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 > Early development: configurable multi-layer protection, compiler registration, scope resolution,
 > IR replacement, Kotlin Gradle integration, and an Android JNI decoder are implemented.
 
@@ -16,24 +18,36 @@ Selective Kotlin/Android string obfuscation driven by `@Obfuscate` annotations.
 
 ## Usage
 
-For local development, publish all artifacts:
-
-```bash
-./gradlew publishToMavenLocal
-```
-
-Add `mavenLocal()` to both `pluginManagement.repositories` and
-`dependencyResolutionManagement.repositories` in the consumer project's `settings.gradle.kts`.
-Then apply the plugin:
+Declare the standard public repositories in the consumer project's `settings.gradle.kts`:
 
 ```kotlin
-plugins {
-    id("io.github.khiaroslav.string-veil") version "0.1.0-SNAPSHOT"
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        google()
+    }
 }
 ```
 
-The plugin supports Kotlin/JVM and Kotlin/Android compilations. It adds the annotations and
-required runtime artifacts automatically. Android receives `native-runtime`; JVM does not.
+Apply String Veil in the application or library module:
+
+```kotlin
+plugins {
+    id("io.github.khiaroslav.string-veil") version "0.1.0-alpha01"
+}
+```
+
+No manual runtime dependency is required. The plugin adds the compiler plugin, annotations, and
+the appropriate decoder automatically. Android receives `native-runtime`; JVM receives `runtime`.
+
 String Veil is enabled by default and can be disabled:
 
 ```kotlin
@@ -41,6 +55,20 @@ stringVeil {
     enabled = false
 }
 ```
+
+### Local development
+
+To test an unpublished checkout, publish all artifacts locally:
+
+```bash
+./gradlew publishToMavenLocal
+```
+
+Add `mavenLocal()` to both `pluginManagement.repositories` and
+`dependencyResolutionManagement.repositories` in the consumer project's `settings.gradle.kts`.
+Use the version from `VERSION_NAME` in `gradle.properties` when applying the plugin.
+
+The plugin supports Kotlin/JVM and Kotlin/Android compilations.
 
 ## Obfuscation methods
 
@@ -98,7 +126,31 @@ they use a published AAR.
 ## Current check
 
 ```bash
-./gradlew test
+./gradlew test :native-runtime:assembleRelease :gradle-plugin:validatePlugins publishToMavenLocal
+```
+
+Building `native-runtime` from source requires Android NDK. Set `STRING_VEIL_NDK_HOME` when the NDK
+cannot be found through `local.properties`.
+
+## Publishing
+
+Release tags publish the five Maven artifacts to Maven Central, the Gradle plugin to the Plugin
+Portal, and create a GitHub release. The tag must exactly match `VERSION_NAME`, prefixed with `v`.
+
+Repository secrets required by `.github/workflows/release.yml`:
+
+- `CENTRAL_PORTAL_USERNAME` and `CENTRAL_PORTAL_PASSWORD`
+- `SIGNING_KEY` and `SIGNING_PASSWORD`
+- `GRADLE_PUBLISH_KEY` and `GRADLE_PUBLISH_SECRET`
+
+The `io.github.khiaroslav` namespace must be verified in Maven Central before the first release.
+The first Gradle Plugin Portal publication is subject to its manual review.
+
+Example after preparing the release commit on the repository's default branch:
+
+```bash
+git tag v0.1.0-alpha01
+git push origin v0.1.0-alpha01
 ```
 
 Client-side secrets can always be recovered by a sufficiently determined attacker at runtime.
@@ -124,3 +176,7 @@ The compiler integration tests compile Kotlin through both engines, verify runti
 scan generated class files to ensure selected plaintext strings are absent. Native decoding raises
 the cost of static analysis, but an attacker can still hook the JNI bridge or inspect the decoded
 value in memory; long-lived credentials must remain server-side.
+
+## License
+
+String Veil is licensed under the [Apache License 2.0](LICENSE).

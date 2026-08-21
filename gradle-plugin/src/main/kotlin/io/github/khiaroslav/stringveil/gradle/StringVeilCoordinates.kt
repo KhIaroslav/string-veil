@@ -4,7 +4,7 @@ internal object StringVeilCoordinates {
     const val GROUP: String = "io.github.khiaroslav.stringveil"
     val VERSION: String =
         StringVeilCoordinates::class.java.`package`.implementationVersion
-            ?: "0.1.0-SNAPSHOT"
+            ?: "0.1.0-alpha01"
 
     const val ANNOTATIONS_ARTIFACT: String = "annotations"
     const val COMPILER_PLUGIN_ARTIFACT: String = "compiler-plugin"
