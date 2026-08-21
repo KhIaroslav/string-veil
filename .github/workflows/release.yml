@@ -15,6 +15,11 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Gates the signing/publishing steps behind a manually approved environment.
+    # Configure required reviewers under: Settings -> Environments -> release.
+    # The signing and Central/Plugin Portal secrets should be attached to this
+    # environment so they are never exposed to workflows outside the release path.
+    environment: release
     env:
       NDK_VERSION: 27.3.13750724
 
@@ -68,6 +73,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          # Verify gradle-wrapper.jar against Gradle's published checksums before it runs.
+          validate-wrappers: true
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4

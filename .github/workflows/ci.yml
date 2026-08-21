@@ -27,6 +27,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          # Verify gradle-wrapper.jar against Gradle's published checksums before it runs.
+          validate-wrappers: true
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4

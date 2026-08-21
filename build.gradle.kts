@@ -94,7 +94,10 @@ nmcpAggregation {
         password = providers.environmentVariable("CENTRAL_PORTAL_PASSWORD")
             .orElse(providers.gradleProperty("centralPortalPassword"))
             .getOrElse("")
-        publishingType = "AUTOMATIC"
+        // USER_MANAGED uploads the deployment to the Central Portal but holds it for a
+        // manual review and release in the web UI. Switch to "AUTOMATIC" only once the
+        // release pipeline is trusted end to end.
+        publishingType = "USER_MANAGED"
         publicationName = "string-veil:${project.version}"
     }
 }
