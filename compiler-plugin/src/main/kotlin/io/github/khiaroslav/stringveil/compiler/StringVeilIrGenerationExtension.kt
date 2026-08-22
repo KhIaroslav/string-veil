@@ -6,6 +6,8 @@
 package io.github.khiaroslav.stringveil.compiler
 
 import io.github.khiaroslav.stringveil.format.StringVeilFormat.MAX_REPETITIONS
+import java.nio.file.Files
+import java.nio.file.Path
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -114,11 +116,23 @@ private class StringLiteralTransformer(
 
     private var scope: Scope = Scope.NONE
     private var expressionAnnotationResolver: SourceExpressionAnnotationResolver? = null
+    private var inConstInitializer: Boolean = false
 
     override fun visitFileNew(declaration: IrFile): IrFile {
         val previousResolver = expressionAnnotationResolver
-        expressionAnnotationResolver =
-            SourceExpressionAnnotationResolver.fromFile(declaration.fileEntry.name)
+        val fileName = declaration.fileEntry.name
+        val resolver = SourceExpressionAnnotationResolver.fromFile(fileName)
+        if (resolver == null && isReadableSourceFile(fileName)) {
+            // Fail closed: we could not recover source-retained expression annotations that K2 drops
+            // from IR, so a literal annotated at an expression site would silently ship as plaintext.
+            messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "string-veil: could not read '$fileName' to recover expression-level @Obfuscate " +
+                    "annotations; a literal annotated at an expression site would be emitted as " +
+                    "plaintext. Fix the file, or move the annotation onto the enclosing declaration.",
+            )
+        }
+        expressionAnnotationResolver = resolver
         val result = super.visitFileNew(declaration)
         expressionAnnotationResolver = previousResolver
         return result
@@ -133,8 +147,15 @@ private class StringLiteralTransformer(
     override fun visitPropertyNew(declaration: IrProperty): IrStatement =
         withinStringScope(declaration) { super.visitPropertyNew(declaration) }
 
-    override fun visitFieldNew(declaration: IrField): IrStatement =
-        withinStringScope(declaration) { super.visitFieldNew(declaration) }
+    override fun visitFieldNew(declaration: IrField): IrStatement {
+        val wasConst = inConstInitializer
+        inConstInitializer = declaration.correspondingPropertySymbol?.owner?.isConst == true
+        return try {
+            withinStringScope(declaration) { super.visitFieldNew(declaration) }
+        } finally {
+            inConstInitializer = wasConst
+        }
+    }
 
     override fun visitAnnotation(expression: IrAnnotation): IrExpression = expression
 
@@ -169,6 +190,19 @@ private class StringLiteralTransformer(
 
         val value = expression.value as String
         if (value.isEmpty()) {
+            skipped++
+            return expression
+        }
+
+        if (inConstInitializer) {
+            // A `const val` must keep a compile-time-constant initializer; replacing it with a
+            // decode() call makes the backend fail. Report it clearly instead of leaking or crashing.
+            messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "string-veil: @Obfuscate cannot protect a `const val` — its value must stay a " +
+                    "compile-time constant. Remove `const`, or exclude it with @DoNotObfuscate.",
+                secretWarningLocation(expression),
+            )
             skipped++
             return expression
         }
@@ -263,6 +297,9 @@ private class StringLiteralTransformer(
             arguments[parameters.single()] = builder.irIntArray(encrypted.container)
         }
     }
+
+    private fun isReadableSourceFile(fileName: String): Boolean =
+        runCatching { Path.of(fileName) }.getOrNull()?.let(Files::isRegularFile) == true
 
     private fun secretWarningLocation(expression: IrConst): CompilerMessageLocation? {
         val fileEntry = currentFile.fileEntry
