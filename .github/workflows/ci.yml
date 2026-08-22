@@ -50,3 +50,11 @@ jobs:
           publishToMavenLocal
           --stacktrace
           --no-daemon
+
+      - name: Fuzz the native container parser (ASan/UBSan)
+        run: >-
+          ./gradlew
+          :native-differential:nativeFuzzTest
+          -PstringVeil.fuzzRuns=2000000
+          --stacktrace
+          --no-daemon

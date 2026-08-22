@@ -259,6 +259,21 @@ the same container format, so they are tested to agree byte-for-byte:
   automatically wherever a C++ toolchain and JNI headers are present (including CI) and is skipped
   gracefully elsewhere — no Android device or emulator required.
 
+### Fuzzing the native decoder
+
+The C++ decoder parses a raw `int[]` container, so its parser is fuzzed under AddressSanitizer and
+UndefinedBehaviorSanitizer to prove it rejects malformed or hostile input without out-of-bounds
+reads, hangs, or undefined behavior (the JVM decoder throws on the same input):
+
+```bash
+./gradlew :native-differential:nativeFuzzTest -PstringVeil.fuzzRuns=2000000
+```
+
+The harness (`native-runtime/src/test/cpp/fuzz_open_container.cpp`) replays the valid differential
+corpus and then runs a bounded random-mutation loop. It needs only a C++17 compiler with
+`-fsanitize=address,undefined` (no libFuzzer runtime). It is a dedicated task rather than part of
+`check` — CI runs it on Linux, where the sanitizer runtimes are reliable.
+
 ## Publishing
 
 Release tags publish the Maven artifacts to Maven Central, the Gradle plugin to the Plugin Portal,

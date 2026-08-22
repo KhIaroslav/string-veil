@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fail-closed behavior so a literal is never silently emitted as plaintext: expression-level
   `@Obfuscate` recovery now errors the build if it cannot read the source (instead of skipping the
   literal), and fail-closed regression tests cover string templates, raw strings, and `const val`.
+- Native decoder fuzzing under AddressSanitizer/UndefinedBehaviorSanitizer
+  (`:native-differential:nativeFuzzTest`): a standalone harness replays the valid container corpus
+  and runs a bounded random-mutation loop over `open_outer_container`, so malformed or hostile
+  containers cannot cause out-of-bounds reads, hangs, or undefined behavior. It runs on Linux in CI.
 
 ### Fixed
 
