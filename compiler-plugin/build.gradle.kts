@@ -54,3 +54,13 @@ val generateDifferentialCorpus by tasks.registering(JavaExec::class) {
     outputs.file(corpusFile)
     args(corpusFile.absolutePath)
 }
+
+// Prints container-size overhead and decode throughput for representative configs. Not a gate:
+// timing is machine-dependent, so this is an on-demand report rather than part of `check`.
+tasks.register<JavaExec>("benchmark") {
+    group = "verification"
+    description = "Reports String Veil container-size overhead and decode cost."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("io.github.khiaroslav.stringveil.compiler.BenchmarkReportKt")
+}

@@ -30,8 +30,7 @@ internal class PipelineEncoder(private val random: SecureRandom) {
         val layers = ArrayList<EncodedLayer>(config.repetitions)
         var transformed = value.copyOf()
 
-        repeat(config.repetitions) {
-            val method = selectMethod(config)
+        for (method in chooseMethods(config)) {
             val layer = encodeLayer(method, transformed)
             transformed.fill(0)
             transformed = layer.data
@@ -58,18 +57,37 @@ internal class PipelineEncoder(private val random: SecureRandom) {
         }
     }
 
-    private fun selectMethod(config: ProtectionConfig): PipelineMethod =
-        when (config.method) {
-            ProtectionMethod.BIT_SHIFT -> PipelineMethod.BIT_SHIFT
-            ProtectionMethod.BIT_XOR -> PipelineMethod.BIT_XOR
-            ProtectionMethod.BASE64 -> PipelineMethod.BASE64
-            ProtectionMethod.AES -> PipelineMethod.AES
-            ProtectionMethod.RANDOM_ALL -> PIPELINE_METHODS.random(random)
-            ProtectionMethod.RANDOM_SELECTED -> {
-                val selected = config.methods.mapNotNull(ProtectionMethod::asPipelineMethod)
-                (selected.ifEmpty { PIPELINE_METHODS }).random(random)
-            }
+    /**
+     * Chooses one method per layer. BASE64's only effect is a ~4/3 size increase, so applying it more
+     * than once per pipeline wastes space without adding obfuscation; it is therefore capped at a
+     * single layer whenever another method is available. When BASE64 is the only method the caller
+     * asked for (explicit `method = BASE64`, or `RANDOM_SELECTED` with just BASE64), the explicit
+     * choice is honored and it may repeat.
+     */
+    private fun chooseMethods(config: ProtectionConfig): List<PipelineMethod> {
+        val pool = when (config.method) {
+            ProtectionMethod.BIT_SHIFT -> listOf(PipelineMethod.BIT_SHIFT)
+            ProtectionMethod.BIT_XOR -> listOf(PipelineMethod.BIT_XOR)
+            ProtectionMethod.BASE64 -> listOf(PipelineMethod.BASE64)
+            ProtectionMethod.AES -> listOf(PipelineMethod.AES)
+            ProtectionMethod.RANDOM_ALL -> PIPELINE_METHODS
+            ProtectionMethod.RANDOM_SELECTED ->
+                config.methods.mapNotNull(ProtectionMethod::asPipelineMethod).ifEmpty { PIPELINE_METHODS }
         }
+        val alternatives = pool.filter { it != PipelineMethod.BASE64 }
+
+        val chosen = ArrayList<PipelineMethod>(config.repetitions)
+        var base64Used = false
+        repeat(config.repetitions) {
+            var method = pool.random(random)
+            if (method == PipelineMethod.BASE64 && base64Used && alternatives.isNotEmpty()) {
+                method = alternatives.random(random)
+            }
+            if (method == PipelineMethod.BASE64) base64Used = true
+            chosen += method
+        }
+        return chosen
+    }
 
     private fun encodeLayer(method: PipelineMethod, input: ByteArray): EncodedLayer =
         when (method) {

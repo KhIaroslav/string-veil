@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`:native-differential:nativeFuzzTest`): a standalone harness replays the valid container corpus
   and runs a bounded random-mutation loop over `open_outer_container`, so malformed or hostile
   containers cannot cause out-of-bounds reads, hangs, or undefined behavior. It runs on Linux in CI.
+- `:compiler-plugin:benchmark` task reporting container-size overhead and decode cost for
+  representative plaintexts and configurations.
 
 ### Fixed
 
@@ -40,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The random pipeline methods (`RANDOM_ALL`, `RANDOM_SELECTED`) no longer stack BASE64: it is applied
+  at most once per pipeline. BASE64's only effect is a ~4/3 size increase, so repeating it inflated
+  containers without adding obfuscation. An explicit `method = BASE64` (or a BASE64-only selection)
+  is still honored for every layer.
 - Release pipeline hardened: the publish job now runs in a manually approved `release` GitHub
   Environment, the Gradle wrapper is validated in CI (`validate-wrappers`), and Central Portal
   deployments use `USER_MANAGED` mode so releases are held for a final manual review.

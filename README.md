@@ -163,6 +163,11 @@ limited to `1..16`; more layers increase build output and runtime work. Each lay
 methods above, and the whole pipeline is then sealed inside a per-string randomized container with
 random padding, masked key material, a sparse permutation, decoy words, and an ARX block transform.
 
+Under the random methods (`RANDOM_ALL`, `RANDOM_SELECTED`), `BASE64` is applied at most once per
+pipeline: it only inflates size by ~4/3 and adds no obfuscation when stacked. An explicit
+`method = BASE64` (or a `BASE64`-only selection) is honored for every layer. See
+[`:compiler-plugin:benchmark`](#building-and-testing) for the resulting size and decode costs.
+
 > **A note on `AES`.** The `AES` method applies AES/CTR as one reversible layer. Because String Veil
 > has no external key, the AES key is randomly generated at build time and stored — masked —
 > **inside the same container** as the ciphertext. It adds variety to the obfuscation pipeline; it
@@ -273,6 +278,18 @@ The harness (`native-runtime/src/test/cpp/fuzz_open_container.cpp`) replays the 
 corpus and then runs a bounded random-mutation loop. It needs only a C++17 compiler with
 `-fsanitize=address,undefined` (no libFuzzer runtime). It is a dedicated task rather than part of
 `check` — CI runs it on Linux, where the sanitizer runtimes are reliable.
+
+### Benchmarks
+
+To see the size and speed cost of obfuscation — container-size overhead per method and configuration,
+plus decode throughput — run:
+
+```bash
+./gradlew :compiler-plugin:benchmark
+```
+
+Size figures are exact; timing is a rough steady-state estimate and machine-dependent, so this is a
+report rather than a `check` gate.
 
 ## Publishing
 
