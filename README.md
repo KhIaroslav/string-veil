@@ -265,10 +265,15 @@ the same container format, so they are tested to agree byte-for-byte:
 - `StringCipherRoundTripTest` (in `compiler-plugin`) round-trips a broad corpus — every method,
   `RANDOM_ALL`/`RANDOM_SELECTED`, repetitions `1..16`, ASCII/Unicode/emoji/control bytes, plus 500
   randomized fuzz cases — through the build-time cipher and the JVM decoder.
-- `:native-differential:nativeDifferentialTest` host-compiles the C++ decoder into a shared library
-  and decodes the *same* containers with it, asserting they match the JVM result. It runs
-  automatically wherever a C++ toolchain and JNI headers are present (including CI) and is skipped
-  gracefully elsewhere — no Android device or emulator required.
+- `:native-differential:nativeDifferentialTest` host-compiles the C++ decoder into a shared library,
+  loads it through the real JNI path (`System.loadLibrary` → `JNI_OnLoad` → `RegisterNatives`), and
+  decodes the *same* containers with it, asserting they match the JVM result. This exercises the full
+  JNI bridge — just on the host architecture — and runs wherever a C++ toolchain and JNI headers are
+  present (including CI), skipping gracefully elsewhere with no Android device required.
+- The [`android-test/`](android-test) module closes the remaining gap: an instrumented test that runs
+  on a real Android runtime (an `x86_64` emulator in CI) and asserts the NDK-built `.so` loads for the
+  device's ABI and decodes an `@Obfuscate` literal — i.e. that the NATIVE engine is actually in use,
+  not the JVM fallback.
 
 ### Fuzzing the native decoder
 

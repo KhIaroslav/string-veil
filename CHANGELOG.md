@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A runnable `sample/` example that consumes the plugin from source via `includeBuild`
   (`./gradlew -p sample run`), exercised as an end-to-end smoke test in CI.
 - Aggregated Dokka API documentation for the consumer-facing modules (`./gradlew dokkaGenerate`).
+- An `android-test/` module with an instrumented test that runs on an Android emulator in CI and
+  verifies the NDK-built native library loads for the device's ABI and decodes an `@Obfuscate`
+  literal — proving the NATIVE engine works on-device, not just the host-JVM differential path.
 
 ### Fixed
 
