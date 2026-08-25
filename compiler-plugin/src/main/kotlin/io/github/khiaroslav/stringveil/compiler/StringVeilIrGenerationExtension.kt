@@ -1,11 +1,18 @@
-@file:OptIn(org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI::class)
+@file:OptIn(
+    org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI::class,
+    io.github.khiaroslav.stringveil.format.InternalStringVeilApi::class,
+)
 
 package io.github.khiaroslav.stringveil.compiler
 
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.MAX_REPETITIONS
+import java.nio.file.Files
+import java.nio.file.Path
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrStatement
@@ -42,6 +49,7 @@ import org.jetbrains.kotlin.name.Name
 internal class StringVeilIrGenerationExtension(
     private val messageCollector: MessageCollector,
     private val nativeAvailable: Boolean = false,
+    private val failOnSecretLikeLiterals: Boolean = false,
     private val cipher: StringCipher = LayeredStringCipher(),
 ) : IrGenerationExtension {
     override fun generate(
@@ -64,6 +72,7 @@ internal class StringVeilIrGenerationExtension(
             cipher = cipher,
             messageCollector = messageCollector,
             nativeAvailable = nativeAvailable,
+            failOnSecretLikeLiterals = failOnSecretLikeLiterals,
         )
         moduleFragment.transformChildrenVoid(transformer)
 
@@ -82,6 +91,7 @@ private class StringLiteralTransformer(
     private val cipher: StringCipher,
     private val messageCollector: MessageCollector,
     private val nativeAvailable: Boolean,
+    private val failOnSecretLikeLiterals: Boolean,
 ) : IrElementTransformerVoidWithContext() {
     var transformed: Int = 0
         private set
@@ -106,14 +116,67 @@ private class StringLiteralTransformer(
 
     private var scope: Scope = Scope.NONE
     private var expressionAnnotationResolver: SourceExpressionAnnotationResolver? = null
+    private var inConstInitializer: Boolean = false
+
+    // Source offsets of every `@Obfuscate` handled in the current file, through either the
+    // declaration (IR) path or the expression (source-recovery) path. Any `@Obfuscate` the source
+    // contains that is not in this set was applied to nothing — a silent plaintext leak — and the
+    // per-file cross-check in visitFileNew fails the build for it.
+    private var handledObfuscateOffsets: MutableSet<Int> = mutableSetOf()
 
     override fun visitFileNew(declaration: IrFile): IrFile {
         val previousResolver = expressionAnnotationResolver
-        expressionAnnotationResolver =
-            SourceExpressionAnnotationResolver.fromFile(declaration.fileEntry.name)
+        val previousHandled = handledObfuscateOffsets
+        val fileName = declaration.fileEntry.name
+        val resolver = SourceExpressionAnnotationResolver.fromFile(fileName)
+        if (resolver == null && isReadableSourceFile(fileName)) {
+            // Fail closed: we could not recover source-retained expression annotations that K2 drops
+            // from IR, so a literal annotated at an expression site would silently ship as plaintext.
+            messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "string-veil: could not read '$fileName' to recover expression-level @Obfuscate " +
+                    "annotations; a literal annotated at an expression site would be emitted as " +
+                    "plaintext. Fix the file, or move the annotation onto the enclosing declaration.",
+            )
+        }
+        expressionAnnotationResolver = resolver
+        handledObfuscateOffsets = mutableSetOf()
+
         val result = super.visitFileNew(declaration)
+
+        reportUnappliedObfuscateAnnotations(declaration, resolver)
+
         expressionAnnotationResolver = previousResolver
+        handledObfuscateOffsets = previousHandled
         return result
+    }
+
+    // Fail closed on every `@Obfuscate` in the file that was applied to no string literal — an
+    // `@Obfuscate` on a compound expression (an `if`/`when`, an interpolated template, a call) that
+    // K2 dropped from IR and the source recovery could not map to a literal. Left unreported, such a
+    // literal ships as plaintext while the developer believes it is hidden.
+    private fun reportUnappliedObfuscateAnnotations(
+        file: IrFile,
+        resolver: SourceExpressionAnnotationResolver?,
+    ) {
+        resolver ?: return
+        val unapplied = resolver.obfuscateAnnotationOffsets() - handledObfuscateOffsets
+        val fileEntry = file.fileEntry
+        unapplied.sorted().forEach { offset ->
+            messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "string-veil: this @Obfuscate was not applied to any string literal. String Veil " +
+                    "obfuscates string literals, so annotating a compound expression (an if/when, an " +
+                    "interpolated template, a call) protects nothing. Annotate the string literal " +
+                    "directly, or move @Obfuscate onto the enclosing declaration.",
+                CompilerMessageLocation.create(
+                    fileEntry.name,
+                    fileEntry.getLineNumber(offset) + 1,
+                    fileEntry.getColumnNumber(offset) + 1,
+                    null,
+                ),
+            )
+        }
     }
 
     override fun visitClassNew(declaration: IrClass): IrStatement =
@@ -125,8 +188,15 @@ private class StringLiteralTransformer(
     override fun visitPropertyNew(declaration: IrProperty): IrStatement =
         withinStringScope(declaration) { super.visitPropertyNew(declaration) }
 
-    override fun visitFieldNew(declaration: IrField): IrStatement =
-        withinStringScope(declaration) { super.visitFieldNew(declaration) }
+    override fun visitFieldNew(declaration: IrField): IrStatement {
+        val wasConst = inConstInitializer
+        inConstInitializer = declaration.correspondingPropertySymbol?.owner?.isConst == true
+        return try {
+            withinStringScope(declaration) { super.visitFieldNew(declaration) }
+        } finally {
+            inConstInitializer = wasConst
+        }
+    }
 
     override fun visitAnnotation(expression: IrAnnotation): IrExpression = expression
 
@@ -146,6 +216,13 @@ private class StringLiteralTransformer(
             ?.obfuscationConfigAt(expression.startOffset, expression.endOffset)
         val expressionExcluded = DO_NOT_OBFUSCATE_FQ_NAME in annotations
         val expressionObfuscated = OBFUSCATE_FQ_NAME in annotations
+        if (expressionObfuscated) {
+            // This @Obfuscate was mapped to a literal, so it is handled even if the literal is later
+            // skipped (empty) — the per-file cross-check must not flag it as a leak.
+            expressionAnnotationResolver
+                ?.matchedObfuscateOffsetAt(expression.startOffset, expression.endOffset)
+                ?.let(handledObfuscateOffsets::add)
+        }
         val shouldTransform = when {
             scope.mode == ScopeMode.EXCLUDE -> false
             expressionExcluded -> false
@@ -163,6 +240,37 @@ private class StringLiteralTransformer(
         if (value.isEmpty()) {
             skipped++
             return expression
+        }
+
+        if (inConstInitializer) {
+            // A `const val` must keep a compile-time-constant initializer; replacing it with a
+            // decode() call makes the backend fail. Report it clearly instead of leaking or crashing.
+            messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "string-veil: @Obfuscate cannot protect a `const val` — its value must stay a " +
+                    "compile-time constant. Remove `const`, or exclude it with @DoNotObfuscate.",
+                secretWarningLocation(expression),
+            )
+            skipped++
+            return expression
+        }
+
+        SecretLiteralHeuristics.detect(value)?.let { reason ->
+            messageCollector.report(
+                if (failOnSecretLikeLiterals) {
+                    CompilerMessageSeverity.ERROR
+                } else {
+                    CompilerMessageSeverity.WARNING
+                },
+                "string-veil: this @Obfuscate literal looks like $reason. String Veil is obfuscation, " +
+                    "not encryption or a secrets store, and cannot keep a real secret safe on the " +
+                    "client (see SECURITY.md). Move it server-side or inject it at runtime.",
+                secretWarningLocation(expression),
+            )
+            if (failOnSecretLikeLiterals) {
+                skipped++
+                return expression
+            }
         }
 
         val config = expressionConfig ?: scope.config
@@ -238,6 +346,19 @@ private class StringLiteralTransformer(
         }
     }
 
+    private fun isReadableSourceFile(fileName: String): Boolean =
+        runCatching { Path.of(fileName) }.getOrNull()?.let(Files::isRegularFile) == true
+
+    private fun secretWarningLocation(expression: IrConst): CompilerMessageLocation? {
+        val fileEntry = currentFile.fileEntry
+        return CompilerMessageLocation.create(
+            fileEntry.name,
+            fileEntry.getLineNumber(expression.startOffset) + 1,
+            fileEntry.getColumnNumber(expression.startOffset) + 1,
+            null,
+        )
+    }
+
     private fun DeclarationIrBuilder.irIntArray(values: IntArray): IrExpression =
         irCall(symbols.intArrayOf).apply {
             val parameter = symbol.owner.parameters.single { it.kind == IrParameterKind.Regular }
@@ -267,7 +388,15 @@ private class StringLiteralTransformer(
         when {
             parentScope.mode == ScopeMode.EXCLUDE -> Scope.EXCLUDE
             hasAnnotation(DO_NOT_OBFUSCATE_FQ_NAME) -> Scope.EXCLUDE
-            hasAnnotation(OBFUSCATE_FQ_NAME) -> Scope.obfuscate(obfuscationConfig())
+            hasAnnotation(OBFUSCATE_FQ_NAME) -> {
+                // Record the source position so the per-file cross-check knows this @Obfuscate was
+                // handled through the declaration (IR) path and must not be reported as a leak.
+                getAnnotation(OBFUSCATE_FQ_NAME)
+                    ?.startOffset
+                    ?.takeIf { it >= 0 }
+                    ?.let(handledObfuscateOffsets::add)
+                Scope.obfuscate(obfuscationConfig())
+            }
             else -> parentScope
         }
 

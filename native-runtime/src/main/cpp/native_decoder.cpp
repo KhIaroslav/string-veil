@@ -607,7 +607,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     );
     if (decoder == nullptr) return JNI_ERR;
     JNINativeMethod method = {
-        const_cast<char*>("decode"),
+        const_cast<char*>("nativeDecode"),
         const_cast<char*>("([I)Ljava/lang/String;"),
         reinterpret_cast<void*>(native_decode),
     };

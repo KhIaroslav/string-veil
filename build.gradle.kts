@@ -1,6 +1,7 @@
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.plugins.signing.SigningExtension
 
 plugins {
@@ -8,6 +9,7 @@ plugins {
     alias(libs.plugins.nmcp) apply false
     alias(libs.plugins.nmcp.aggregation)
     alias(libs.plugins.plugin.publish) apply false
+    alias(libs.plugins.dokka)
 }
 
 allprojects {
@@ -16,6 +18,14 @@ allprojects {
 }
 
 subprojects {
+    // Reproducible archives: strip embedded file timestamps and pin entry order so every published
+    // jar/zip is byte-for-byte identical across builds and machines, which makes the artifacts
+    // independently verifiable against the build provenance.
+    tasks.withType<AbstractArchiveTask>().configureEach {
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+    }
+
     pluginManager.withPlugin("java") {
         extensions.configure<JavaPluginExtension> {
             withSourcesJar()
@@ -84,6 +94,12 @@ dependencies {
     add("nmcpAggregation", project(":gradle-plugin"))
     add("nmcpAggregation", project(":native-runtime"))
     add("nmcpAggregation", project(":runtime"))
+
+    // Aggregated API documentation for the consumer-facing modules. `./gradlew dokkaGenerate`
+    // renders HTML into build/dokka/html.
+    dokka(project(":annotations"))
+    dokka(project(":runtime"))
+    dokka(project(":gradle-plugin"))
 }
 
 nmcpAggregation {
@@ -94,7 +110,10 @@ nmcpAggregation {
         password = providers.environmentVariable("CENTRAL_PORTAL_PASSWORD")
             .orElse(providers.gradleProperty("centralPortalPassword"))
             .getOrElse("")
-        publishingType = "AUTOMATIC"
+        // USER_MANAGED uploads the deployment to the Central Portal but holds it for a
+        // manual review and release in the web UI. Switch to "AUTOMATIC" only once the
+        // release pipeline is trusted end to end.
+        publishingType = "USER_MANAGED"
         publicationName = "string-veil:${project.version}"
     }
 }

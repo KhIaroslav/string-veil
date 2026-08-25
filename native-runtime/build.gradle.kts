@@ -56,9 +56,21 @@ val compileNative by tasks.registering(Exec::class) {
     }
 }
 
+// The JNI bridge falls back to the JVM decoder from :runtime, so compile against it. A resolvable
+// configuration wires the cross-project dependency (and its task ordering) without reaching into
+// another project's tasks at configuration time.
+val bridgeCompileClasspath: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    add(bridgeCompileClasspath.name, project(":runtime"))
+}
+
 val compileBridgeJava by tasks.registering(JavaCompile::class) {
     source(fileTree("src/main/java") { include("**/*.java") })
-    classpath = files()
+    classpath = bridgeCompileClasspath
     destinationDirectory.set(bridgeClasses)
     sourceCompatibility = "17"
     targetCompatibility = "17"
@@ -119,10 +131,25 @@ publishing {
             }
             artifact(sourcesJar)
             artifact(javadocJar)
+
+            // Captured as plain strings so the withXml action stays configuration-cache safe.
+            val runtimeGroup = project.group.toString()
+            val runtimeVersion = project.version.toString()
             pom {
                 packaging = "aar"
                 name.set("String Veil Native Runtime")
                 description.set("Android JNI runtime for String Veil")
+                // Hand-built AAR publication: declare the :runtime dependency explicitly so the JVM
+                // fallback decoder resolves for consumers that do not go through the Gradle plugin.
+                withXml {
+                    val dependency = asNode()
+                        .appendNode("dependencies")
+                        .appendNode("dependency")
+                    dependency.appendNode("groupId", runtimeGroup)
+                    dependency.appendNode("artifactId", "runtime")
+                    dependency.appendNode("version", runtimeVersion)
+                    dependency.appendNode("scope", "runtime")
+                }
             }
         }
     }

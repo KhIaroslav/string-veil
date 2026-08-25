@@ -22,6 +22,7 @@ public class StringVeilCompilerPluginRegistrar : CompilerPluginRegistrar() {
             StringVeilIrGenerationExtension(
                 messageCollector = messageCollector,
                 nativeAvailable = configuration.get(NATIVE_AVAILABLE_KEY, false),
+                failOnSecretLikeLiterals = configuration.get(FAIL_ON_SECRET_LIKE_KEY, false),
             ),
         )
     }

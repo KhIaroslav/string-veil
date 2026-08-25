@@ -3,6 +3,7 @@ import org.gradle.plugin.compatibility.compatibility
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.plugin.publish)
+    alias(libs.plugins.dokka)
     `java-gradle-plugin`
     `maven-publish`
 }
@@ -13,7 +14,10 @@ kotlin {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:${libs.versions.kotlin.get()}")
+    // compileOnly: the Kotlin Gradle plugin already contributes kotlin-gradle-plugin-api to
+    // the consumer's buildscript classpath at runtime. Declaring it as `implementation` would
+    // leak the dependency into the published POM and pin the consumer's KGP version.
+    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin-api:${libs.versions.kotlin.get()}")
 
     testImplementation(gradleTestKit())
     testImplementation(kotlin("test"))

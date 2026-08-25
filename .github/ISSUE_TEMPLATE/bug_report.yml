@@ -1,0 +1,71 @@
+name: Bug report
+description: Report incorrect behavior in String Veil
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please **do not** report security
+        vulnerabilities here — follow the private process in
+        [SECURITY.md](https://github.com/KhIaroslav/string-veil/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: A minimal reproduction (ideally a small annotated snippet or a repo link).
+      placeholder: |
+        1. Annotate `val x = "..."` with `@Obfuscate(...)`
+        2. Build with `./gradlew ...`
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: string-veil-version
+    attributes:
+      label: String Veil version
+      placeholder: "0.1.0-alpha01"
+    validations:
+      required: true
+  - type: input
+    id: kotlin-version
+    attributes:
+      label: Kotlin version
+      placeholder: "2.3.21"
+    validations:
+      required: true
+  - type: input
+    id: gradle-version
+    attributes:
+      label: Gradle version
+      placeholder: "8.14.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Target platform
+      options:
+        - Kotlin/JVM
+        - Kotlin/Android
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: android-details
+    attributes:
+      label: Android details (if applicable)
+      description: AGP version, minSdk, ABI, and decoder engine (AUTO / JVM / NATIVE).
+      placeholder: "AGP 8.x, minSdk 21, arm64-v8a, engine AUTO"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Build/runtime logs
+      description: Relevant stacktrace or output. Please scrub anything sensitive.
+      render: text

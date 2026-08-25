@@ -1,0 +1,8 @@
+# Default owner for everything in this repository.
+* @KhIaroslav
+
+# Security-sensitive areas — always request the maintainer's review.
+/SECURITY.md @KhIaroslav
+/.github/ @KhIaroslav
+/compiler-plugin/ @KhIaroslav
+/native-runtime/ @KhIaroslav

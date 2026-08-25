@@ -17,19 +17,22 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          # Verify gradle-wrapper.jar against Gradle's published checksums before it runs.
+          validate-wrappers: true
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
 
       - name: Install Android NDK
         shell: bash
@@ -41,8 +44,21 @@ jobs:
         run: >-
           ./gradlew
           test
+          :native-differential:nativeDifferentialTest
           :native-runtime:assembleRelease
           :gradle-plugin:validatePlugins
           publishToMavenLocal
           --stacktrace
           --no-daemon
+
+      - name: Fuzz the native container parser (ASan/UBSan)
+        run: >-
+          ./gradlew
+          :native-differential:nativeFuzzTest
+          -PstringVeil.fuzzRuns=2000000
+          --stacktrace
+          --no-daemon
+
+      # End-to-end smoke test: the sample consumes the plugin from source via includeBuild.
+      - name: Run the sample
+        run: ./gradlew -p sample run --stacktrace --no-daemon

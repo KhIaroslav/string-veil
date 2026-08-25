@@ -305,6 +305,62 @@ class StringVeilCompilerPluginTest {
         }
     }
 
+    @Test
+    fun `expression @Obfuscate on a compound expression fails the build`() {
+        val root = createTempDirectory("string-veil-expression-probe").toFile()
+        try {
+            val source = root.resolve("Expression.kt").apply {
+                writeText(
+                    """
+                    import io.github.khiaroslav.stringveil.annotations.Obfuscate
+
+                    val conditional = @Obfuscate if (System.currentTimeMillis() > 0) {
+                        "conditional-expression-secret"
+                    } else {
+                        "conditional-expression-public"
+                    }
+                    val template = @Obfuscate "template-expression-head-${'$'}{System.nanoTime()}-tail"
+                    """.trimIndent(),
+                )
+            }
+            val output = root.resolve("classes").apply(File::mkdirs)
+            val collector = RecordingMessageCollector()
+            val arguments = K2JVMCompilerArguments().apply {
+                destination = output.absolutePath
+                classpath = System.getProperty("java.class.path")
+                freeArgs = listOf(source.absolutePath)
+                jvmTarget = "17"
+                noReflect = true
+                noStdlib = true
+                disableDefaultScriptingPlugin = true
+                pluginClasspaths = arrayOf(
+                    requireNotNull(System.getProperty("stringVeil.compilerPluginJar")),
+                )
+            }
+
+            val exitCode = K2JVMCompiler().exec(collector, Services.EMPTY, arguments)
+
+            // @Obfuscate on the `if`-expression and on the interpolated template maps to no literal.
+            // Rather than silently leaking the branch/segment literals as plaintext, the build fails.
+            assertEquals(
+                ExitCode.COMPILATION_ERROR,
+                exitCode,
+                collector.messages.joinToString("\n"),
+            )
+            val unapplied = collector.messages.count {
+                it.startsWith("ERROR:") && it.contains("was not applied to any string literal")
+            }
+            assertEquals(
+                2,
+                unapplied,
+                "both compound-expression @Obfuscate annotations should be reported:\n" +
+                    collector.messages.joinToString("\n"),
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private class RecordingMessageCollector : MessageCollector {
         val messages = mutableListOf<String>()
         private var errors = false

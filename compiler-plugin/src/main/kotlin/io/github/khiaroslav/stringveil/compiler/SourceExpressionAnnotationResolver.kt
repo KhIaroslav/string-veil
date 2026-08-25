@@ -1,5 +1,8 @@
+@file:OptIn(io.github.khiaroslav.stringveil.format.InternalStringVeilApi::class)
+
 package io.github.khiaroslav.stringveil.compiler
 
+import io.github.khiaroslav.stringveil.format.StringVeilFormat.MAX_REPETITIONS
 import java.nio.file.Files
 import java.nio.file.Path
 import org.jetbrains.kotlin.com.intellij.psi.tree.IElementType
@@ -77,12 +80,50 @@ internal class SourceExpressionAnnotationResolver private constructor(
         while (cursor >= 0) {
             val annotation = parseAnnotationEndingAt(cursor) ?: break
             resolve(annotation.name)?.let { fqName ->
-                result += ResolvedAnnotation(fqName, annotation.arguments)
+                result += ResolvedAnnotation(fqName, annotation.arguments, annotation.atOffset)
             }
             cursor = annotation.beforeAtIndex
         }
 
         return result
+    }
+
+    /** Source offset of the `@Obfuscate` (if any) applied to the literal at these offsets. */
+    fun matchedObfuscateOffsetAt(startOffset: Int, endOffset: Int): Int? =
+        annotationsWithArgumentsAt(startOffset, endOffset)
+            .firstOrNull { it.fqName == OBFUSCATE_FQ_NAME }
+            ?.atOffset
+
+    /**
+     * Source offsets of every `@Obfuscate` (including aliased and same-package uses) in the file,
+     * whether it annotates a declaration or an expression. The transformer subtracts the ones it
+     * actually handled to find annotations that were applied to nothing.
+     */
+    fun obfuscateAnnotationOffsets(): Set<Int> {
+        val offsets = mutableSetOf<Int>()
+        tokens.forEachIndexed { index, token ->
+            if (token.type != KtTokens.AT) return@forEachIndexed
+            val name = parseAnnotationNameStartingAt(index) ?: return@forEachIndexed
+            if (resolve(name) == OBFUSCATE_FQ_NAME) offsets += token.startOffset
+        }
+        return offsets
+    }
+
+    /** Parses a dotted annotation name immediately following the `@` token at [atIndex]. */
+    private fun parseAnnotationNameStartingAt(atIndex: Int): String? {
+        var cursor = atIndex + 1
+        if (cursor >= tokens.size || tokens[cursor].type != KtTokens.IDENTIFIER) return null
+        val parts = mutableListOf(tokens[cursor].normalizedIdentifier())
+        cursor++
+        while (
+            cursor + 1 < tokens.size &&
+            tokens[cursor].type == KtTokens.DOT &&
+            tokens[cursor + 1].type == KtTokens.IDENTIFIER
+        ) {
+            parts.add(tokens[cursor + 1].normalizedIdentifier())
+            cursor += 2
+        }
+        return parts.joinToString(".")
     }
 
     private fun parseAnnotationEndingAt(endIndex: Int): ParsedAnnotation? {
@@ -125,6 +166,7 @@ internal class SourceExpressionAnnotationResolver private constructor(
             name = nameParts.joinToString("."),
             beforeAtIndex = cursor - 1,
             arguments = arguments,
+            atOffset = tokens[cursor].startOffset,
         )
     }
 
@@ -213,11 +255,13 @@ internal class SourceExpressionAnnotationResolver private constructor(
         val name: String,
         val beforeAtIndex: Int,
         val arguments: String?,
+        val atOffset: Int,
     )
 
     private data class ResolvedAnnotation(
         val fqName: FqName,
         val arguments: String?,
+        val atOffset: Int,
     )
 
     private data class Import(
