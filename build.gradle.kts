@@ -1,6 +1,7 @@
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.plugins.signing.SigningExtension
 
 plugins {
@@ -16,6 +17,14 @@ allprojects {
 }
 
 subprojects {
+    // Reproducible archives: strip embedded file timestamps and pin entry order so every published
+    // jar/zip is byte-for-byte identical across builds and machines, which makes the artifacts
+    // independently verifiable against the build provenance.
+    tasks.withType<AbstractArchiveTask>().configureEach {
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+    }
+
     pluginManager.withPlugin("java") {
         extensions.configure<JavaPluginExtension> {
             withSourcesJar()

@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   containers cannot cause out-of-bounds reads, hangs, or undefined behavior. It runs on Linux in CI.
 - `:compiler-plugin:benchmark` task reporting container-size overhead and decode cost for
   representative plaintexts and configurations.
+- Supply-chain hardening for releases: published jars and the AAR are now reproducible (no embedded
+  timestamps, pinned entry order); the release attests every binary with signed SLSA build provenance
+  (`gh attestation verify`); and each release attaches an SPDX SBOM (`string-veil-sbom.spdx.json`).
 
 ### Fixed
 

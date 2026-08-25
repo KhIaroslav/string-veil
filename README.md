@@ -309,6 +309,22 @@ Portal in `USER_MANAGED` mode, so the deployment is held for a final manual revi
 live. See [`.github/workflows/release.yml`](.github/workflows/release.yml) for the required secrets
 and the `io.github.khiaroslav` namespace verification steps.
 
+### Supply chain
+
+- **Reproducible artifacts.** Published jars and the AAR strip embedded timestamps and pin entry
+  order, so a given source revision builds byte-for-byte identical archives on any machine.
+- **Signed build provenance.** The release attests every published binary with
+  [SLSA build provenance](https://slsa.dev/) via GitHub's attestation service. Because the archives
+  are reproducible, the attested digests match what you can rebuild yourself. Verify with:
+
+  ```bash
+  gh attestation verify <artifact.jar> --repo KhIaroslav/string-veil
+  ```
+
+- **SBOM.** Each release attaches an SPDX software bill of materials
+  (`string-veil-sbom.spdx.json`) as a GitHub release asset.
+- **Pinned CI actions.** Every GitHub Action is pinned to a commit SHA.
+
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for build, style, and PR
