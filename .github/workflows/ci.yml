@@ -58,3 +58,7 @@ jobs:
           -PstringVeil.fuzzRuns=2000000
           --stacktrace
           --no-daemon
+
+      # End-to-end smoke test: the sample consumes the plugin from source via includeBuild.
+      - name: Run the sample
+        run: ./gradlew -p sample run --stacktrace --no-daemon

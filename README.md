@@ -121,6 +121,9 @@ At compile time the literal is replaced with a call equivalent to
 plaintext no longer appears in the compiled class or DEX. At runtime the value is restored
 transparently — you use the property exactly as before.
 
+For a complete, runnable example that consumes the plugin from source, see [`sample/`](sample) and
+run `./gradlew -p sample run`.
+
 ## Obfuscation methods
 
 ```kotlin
