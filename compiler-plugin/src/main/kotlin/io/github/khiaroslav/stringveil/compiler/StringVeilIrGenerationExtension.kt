@@ -118,8 +118,15 @@ private class StringLiteralTransformer(
     private var expressionAnnotationResolver: SourceExpressionAnnotationResolver? = null
     private var inConstInitializer: Boolean = false
 
+    // Source offsets of every `@Obfuscate` handled in the current file, through either the
+    // declaration (IR) path or the expression (source-recovery) path. Any `@Obfuscate` the source
+    // contains that is not in this set was applied to nothing — a silent plaintext leak — and the
+    // per-file cross-check in visitFileNew fails the build for it.
+    private var handledObfuscateOffsets: MutableSet<Int> = mutableSetOf()
+
     override fun visitFileNew(declaration: IrFile): IrFile {
         val previousResolver = expressionAnnotationResolver
+        val previousHandled = handledObfuscateOffsets
         val fileName = declaration.fileEntry.name
         val resolver = SourceExpressionAnnotationResolver.fromFile(fileName)
         if (resolver == null && isReadableSourceFile(fileName)) {
@@ -133,9 +140,43 @@ private class StringLiteralTransformer(
             )
         }
         expressionAnnotationResolver = resolver
+        handledObfuscateOffsets = mutableSetOf()
+
         val result = super.visitFileNew(declaration)
+
+        reportUnappliedObfuscateAnnotations(declaration, resolver)
+
         expressionAnnotationResolver = previousResolver
+        handledObfuscateOffsets = previousHandled
         return result
+    }
+
+    // Fail closed on every `@Obfuscate` in the file that was applied to no string literal — an
+    // `@Obfuscate` on a compound expression (an `if`/`when`, an interpolated template, a call) that
+    // K2 dropped from IR and the source recovery could not map to a literal. Left unreported, such a
+    // literal ships as plaintext while the developer believes it is hidden.
+    private fun reportUnappliedObfuscateAnnotations(
+        file: IrFile,
+        resolver: SourceExpressionAnnotationResolver?,
+    ) {
+        resolver ?: return
+        val unapplied = resolver.obfuscateAnnotationOffsets() - handledObfuscateOffsets
+        val fileEntry = file.fileEntry
+        unapplied.sorted().forEach { offset ->
+            messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "string-veil: this @Obfuscate was not applied to any string literal. String Veil " +
+                    "obfuscates string literals, so annotating a compound expression (an if/when, an " +
+                    "interpolated template, a call) protects nothing. Annotate the string literal " +
+                    "directly, or move @Obfuscate onto the enclosing declaration.",
+                CompilerMessageLocation.create(
+                    fileEntry.name,
+                    fileEntry.getLineNumber(offset) + 1,
+                    fileEntry.getColumnNumber(offset) + 1,
+                    null,
+                ),
+            )
+        }
     }
 
     override fun visitClassNew(declaration: IrClass): IrStatement =
@@ -175,6 +216,13 @@ private class StringLiteralTransformer(
             ?.obfuscationConfigAt(expression.startOffset, expression.endOffset)
         val expressionExcluded = DO_NOT_OBFUSCATE_FQ_NAME in annotations
         val expressionObfuscated = OBFUSCATE_FQ_NAME in annotations
+        if (expressionObfuscated) {
+            // This @Obfuscate was mapped to a literal, so it is handled even if the literal is later
+            // skipped (empty) — the per-file cross-check must not flag it as a leak.
+            expressionAnnotationResolver
+                ?.matchedObfuscateOffsetAt(expression.startOffset, expression.endOffset)
+                ?.let(handledObfuscateOffsets::add)
+        }
         val shouldTransform = when {
             scope.mode == ScopeMode.EXCLUDE -> false
             expressionExcluded -> false
@@ -340,7 +388,15 @@ private class StringLiteralTransformer(
         when {
             parentScope.mode == ScopeMode.EXCLUDE -> Scope.EXCLUDE
             hasAnnotation(DO_NOT_OBFUSCATE_FQ_NAME) -> Scope.EXCLUDE
-            hasAnnotation(OBFUSCATE_FQ_NAME) -> Scope.obfuscate(obfuscationConfig())
+            hasAnnotation(OBFUSCATE_FQ_NAME) -> {
+                // Record the source position so the per-file cross-check knows this @Obfuscate was
+                // handled through the declaration (IR) path and must not be reported as a leak.
+                getAnnotation(OBFUSCATE_FQ_NAME)
+                    ?.startOffset
+                    ?.takeIf { it >= 0 }
+                    ?.let(handledObfuscateOffsets::add)
+                Scope.obfuscate(obfuscationConfig())
+            }
             else -> parentScope
         }
 

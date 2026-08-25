@@ -19,9 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compile-time warning when an `@Obfuscate` literal looks like a real secret (AWS/GitHub/Google/Slack
   tokens, private-key blocks, JWTs, high-entropy tokens), with `stringVeil.failOnSecretLikeLiterals`
   to escalate it to a build error.
-- Fail-closed behavior so a literal is never silently emitted as plaintext: expression-level
-  `@Obfuscate` recovery now errors the build if it cannot read the source (instead of skipping the
-  literal), and fail-closed regression tests cover string templates, raw strings, and `const val`.
+- Fail-closed behavior so a literal is never silently emitted as plaintext: a per-file cross-check
+  fails the build for any `@Obfuscate` that was applied to no string literal — an annotation on a
+  compound expression (an `if`/`when`, an interpolated template, a call), or a file whose source
+  could not be read to recover expression-level annotations. Regression tests cover these plus string
+  templates, raw strings, and `const val`.
 - Native decoder fuzzing under AddressSanitizer/UndefinedBehaviorSanitizer
   (`:native-differential:nativeFuzzTest`): a standalone harness replays the valid container corpus
   and runs a bounded random-mutation loop over `open_outer_container`, so malformed or hostile

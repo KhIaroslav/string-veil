@@ -217,15 +217,18 @@ JNI bridge or read the decoded value from memory — the threat model above stil
    materializes the original string.
 
 > K2 does not retain `AnnotationTarget.EXPRESSION` annotations in IR. String Veil recovers direct
-> expression markers from Kotlin lexer tokens and IR source offsets. If that source cannot be read,
-> the plugin **fails the build** rather than silently emitting an expression-annotated literal as
-> plaintext.
+> expression markers from Kotlin lexer tokens and IR source offsets, and **fails the build** for any
+> `@Obfuscate` it cannot apply to a string literal — an unreadable source, or an annotation on a
+> compound expression — rather than silently shipping the literal as plaintext.
 
 ## Limitations
 
 - **`const val` cannot be obfuscated.** Its value must remain a compile-time constant, so it cannot
   be replaced with a decoder call. Annotating one is a compile error — drop `const`, or exclude it
   with `@DoNotObfuscate`.
+- **`@Obfuscate` must reach a string literal.** Annotating a compound expression — an `if`/`when`, an
+  interpolated template (`"...${x}..."`), or a call — is a compile error, because String Veil rewrites
+  literals, not runtime values. Annotate the literal directly, or the enclosing declaration.
 - **Only Kotlin string literals in scope are protected.** String Veil rewrites Kotlin IR, so it does
   not touch Android resources, `AndroidManifest.xml`, `strings.xml`, assets, `BuildConfig`, or
   non-Kotlin sources. Keep sensitive strings out of those surfaces yourself.

@@ -136,6 +136,52 @@ class StringVeilFailClosedTest {
         }
     }
 
+    @Test
+    fun `expression @Obfuscate on a call expression fails the build`() {
+        val result = compile(
+            "Call.kt",
+            """
+            import io.github.khiaroslav.stringveil.annotations.Obfuscate
+
+            fun provide(): String = "runtime-value"
+
+            val called = @Obfuscate provide()
+            """.trimIndent(),
+        )
+
+        assertEquals(ExitCode.COMPILATION_ERROR, result.exitCode, result.messages.joinToString("\n"))
+        assertTrue(
+            result.messages.any {
+                it.startsWith("ERROR:") && it.contains("was not applied to any string literal")
+            },
+            "expected an unapplied-@Obfuscate error: ${result.messages.joinToString("\n")}",
+        )
+    }
+
+    @Test
+    fun `valid declaration and literal annotations do not trip the cross-check`() {
+        val result = compile(
+            "Valid.kt",
+            """
+            import io.github.khiaroslav.stringveil.annotations.Obfuscate
+            import io.github.khiaroslav.stringveil.annotations.Obfuscate as Veil
+
+            @Obfuscate
+            val declared = "declared-secret"
+
+            val direct = @Veil "direct-secret"
+            """.trimIndent(),
+        )
+
+        assertEquals(ExitCode.OK, result.exitCode, result.messages.joinToString("\n"))
+        assertFalse(
+            result.messages.any { it.contains("was not applied") },
+            "the cross-check must not flag valid annotations: ${result.messages.joinToString("\n")}",
+        )
+        assertFalse(result.leaks("declared-secret"), "declaration-annotated value leaked")
+        assertFalse(result.leaks("direct-secret"), "expression-annotated value leaked")
+    }
+
     private class RecordingMessageCollector : MessageCollector {
         val messages = mutableListOf<String>()
         private var errors = false
