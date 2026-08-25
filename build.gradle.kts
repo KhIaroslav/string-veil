@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.nmcp) apply false
     alias(libs.plugins.nmcp.aggregation)
     alias(libs.plugins.plugin.publish) apply false
+    alias(libs.plugins.dokka)
 }
 
 allprojects {
@@ -93,6 +94,12 @@ dependencies {
     add("nmcpAggregation", project(":gradle-plugin"))
     add("nmcpAggregation", project(":native-runtime"))
     add("nmcpAggregation", project(":runtime"))
+
+    // Aggregated API documentation for the consumer-facing modules. `./gradlew dokkaGenerate`
+    // renders HTML into build/dokka/html.
+    dokka(project(":annotations"))
+    dokka(project(":runtime"))
+    dokka(project(":gradle-plugin"))
 }
 
 nmcpAggregation {

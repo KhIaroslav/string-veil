@@ -297,6 +297,17 @@ plus decode throughput — run:
 Size figures are exact; timing is a rough steady-state estimate and machine-dependent, so this is a
 report rather than a `check` gate.
 
+### API documentation
+
+Generate aggregated HTML API docs for the consumer-facing modules (`annotations`, `runtime`,
+`gradle-plugin`) with [Dokka](https://kotlinlang.org/docs/dokka-introduction.html):
+
+```bash
+./gradlew dokkaGenerate
+```
+
+The docs land in `build/dokka/html`.
+
 ## Publishing
 
 Release tags publish the Maven artifacts to Maven Central, the Gradle plugin to the Plugin Portal,

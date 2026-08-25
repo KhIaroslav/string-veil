@@ -3,6 +3,7 @@ import org.gradle.plugin.compatibility.compatibility
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.plugin.publish)
+    alias(libs.plugins.dokka)
     `java-gradle-plugin`
     `maven-publish`
 }

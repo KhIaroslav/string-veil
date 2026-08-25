@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Supply-chain hardening for releases: published jars and the AAR are now reproducible (no embedded
   timestamps, pinned entry order); the release attests every binary with signed SLSA build provenance
   (`gh attestation verify`); and each release attaches an SPDX SBOM (`string-veil-sbom.spdx.json`).
+- A runnable `sample/` example that consumes the plugin from source via `includeBuild`
+  (`./gradlew -p sample run`), exercised as an end-to-end smoke test in CI.
+- Aggregated Dokka API documentation for the consumer-facing modules (`./gradlew dokkaGenerate`).
 
 ### Fixed
 
