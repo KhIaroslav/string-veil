@@ -25,6 +25,9 @@ dependencies {
 
     testImplementation(project(":annotations"))
     testImplementation(kotlin("test"))
+    // Test-only: compiles Kotlin fixtures in-process to exercise the transform on real Kotlin
+    // bytecode (property annotations land on synthetic methods, not fields). Not used by the plugin.
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
 }
 
 tasks.test {
