@@ -1,4 +1,4 @@
-package io.github.khiaroslav.stringveil.compiler
+package io.github.khiaroslav.stringveil.encoder
 
 import java.security.SecureRandom
 import kotlin.test.Test

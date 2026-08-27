@@ -7,7 +7,7 @@ import java.io.File
  * C++ decoder agree on the exact same containers.
  *
  * It host-compiles `native-runtime/src/main/cpp/native_decoder.cpp` into a shared library, then runs
- * every container from `:compiler-plugin:generateDifferentialCorpus` through it in a forked JVM.
+ * every container from `:bytecode:generateDifferentialCorpus` through it in a forked JVM.
  * When no C++ toolchain (or no JNI headers) is available, both tasks are disabled at configuration
  * time rather than failing, so a plain `./gradlew check` still works on hosts without a compiler.
  *
@@ -80,7 +80,7 @@ val nativeSource: File = rootProject.file("native-runtime/src/main/cpp/native_de
 val nativeLibraryFile: File? = hostTarget?.let { File(nativeOutputDir, it.libraryFileName) }
 // Resolve the corpus path to a plain String at configuration time so no cross-project provider is
 // captured by a task action (configuration cache cannot serialize script/project references).
-val corpusPath: String = project(":compiler-plugin").layout.buildDirectory
+val corpusPath: String = project(":bytecode").layout.buildDirectory
     .file("differential/corpus.bin").get().asFile.absolutePath
 
 if (!nativeBuildable) {
@@ -124,7 +124,7 @@ val nativeDifferentialTest by tasks.registering(JavaExec::class) {
     group = "verification"
     description = "Decodes the differential corpus natively and checks it against the JVM decoder."
     enabled = nativeBuildable
-    dependsOn(compileHostNativeDecoder, ":compiler-plugin:generateDifferentialCorpus")
+    dependsOn(compileHostNativeDecoder, ":bytecode:generateDifferentialCorpus")
     inputs.file(corpusPath)
 
     classpath = sourceSets["main"].runtimeClasspath
@@ -156,7 +156,7 @@ val nativeFuzzSeeds by tasks.registering(JavaExec::class) {
     group = "verification"
     description = "Explodes the differential corpus into fuzz seed files (valid containers)."
     enabled = nativeBuildable
-    dependsOn(":compiler-plugin:generateDifferentialCorpus")
+    dependsOn(":bytecode:generateDifferentialCorpus")
     inputs.file(corpusPath)
     outputs.dir(fuzzSeedsDir)
     classpath = sourceSets["main"].runtimeClasspath

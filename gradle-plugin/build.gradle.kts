@@ -14,10 +14,17 @@ kotlin {
 }
 
 dependencies {
-    // compileOnly: the Kotlin Gradle plugin already contributes kotlin-gradle-plugin-api to
-    // the consumer's buildscript classpath at runtime. Declaring it as `implementation` would
-    // leak the dependency into the published POM and pin the consumer's KGP version.
-    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin-api:${libs.versions.kotlin.get()}")
+    // The transform engine runs inside the consumer build, so it (and its ASM/encoder/runtime deps)
+    // must be on the plugin's runtime classpath.
+    implementation(project(":bytecode"))
+    // The Android instrumentation bridge uses the ASM tree API directly.
+    implementation(libs.asm)
+    implementation(libs.asm.tree)
+
+    // compileOnly: AGP is present in the consumer's build only when they apply an Android plugin, and
+    // the Android code path is loaded lazily there. Declaring it `implementation` would drag AGP into
+    // every JVM consumer.
+    compileOnly(libs.agp.api)
 
     testImplementation(gradleTestKit())
     testImplementation(kotlin("test"))
@@ -49,23 +56,15 @@ tasks.jar {
 }
 
 tasks.test {
+    // The plugin (and its bytecode/asm/runtime deps) is injected via withPluginClasspath(); only the
+    // consumer-facing artifacts the plugin adds — annotations and runtime — need a resolvable repo.
     val annotationsJar = project(":annotations").tasks.named<Jar>("jar")
-    val compilerPluginJar = project(":compiler-plugin").tasks.named<Jar>("jar")
-    val gradlePluginJar = tasks.named<Jar>("jar")
     val runtimeJar = project(":runtime").tasks.named<Jar>("jar")
 
-    dependsOn(annotationsJar, compilerPluginJar, gradlePluginJar, runtimeJar)
+    dependsOn(annotationsJar, runtimeJar)
     systemProperty(
         "stringVeil.annotationsJar",
         annotationsJar.get().archiveFile.get().asFile.absolutePath,
-    )
-    systemProperty(
-        "stringVeil.compilerPluginJar",
-        compilerPluginJar.get().archiveFile.get().asFile.absolutePath,
-    )
-    systemProperty(
-        "stringVeil.gradlePluginJar",
-        gradlePluginJar.get().archiveFile.get().asFile.absolutePath,
     )
     systemProperty(
         "stringVeil.runtimeJar",

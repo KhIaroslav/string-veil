@@ -32,32 +32,64 @@ import org.objectweb.asm.tree.MethodInsnNode
  * - a `const`/`ConstantValue` field selected for obfuscation is reported as an error (its value is
  *   inlined into every use site and cannot be recovered from bytecode).
  *
- * The annotation descriptors are injectable so tests can drive the engine without touching the
- * shipped annotations module.
+ * The annotation descriptors and decoder are injectable so tests and the Android path can drive the
+ * engine without touching the shipped annotations module.
  */
 public class StringVeilTransformer(
     private val cipher: StringCipher = LayeredStringCipher(),
     private val obfuscateDescriptor: String = OBFUSCATE_DESCRIPTOR,
     private val doNotObfuscateDescriptor: String = DO_NOT_OBFUSCATE_DESCRIPTOR,
     private val decoderInternalName: String = STRING_DECODER,
+    private val failOnSecretLike: Boolean = false,
 ) {
-    public data class Result(val bytes: ByteArray, val errors: List<String>)
+    public data class Result(
+        val bytes: ByteArray,
+        val errors: List<String>,
+        val warnings: List<String>,
+    )
+
+    public data class Outcome(
+        val changed: Boolean,
+        val errors: List<String>,
+        val warnings: List<String>,
+    )
 
     public fun transform(original: ByteArray): Result {
         val node = ClassNode()
         ClassReader(original).accept(node, 0)
+        val outcome = transformNode(node)
+        if (!outcome.changed) return Result(original, outcome.errors, outcome.warnings)
+        val writer = ClassWriter(ClassWriter.COMPUTE_MAXS)
+        node.accept(writer)
+        return Result(writer.toByteArray(), outcome.errors, outcome.warnings)
+    }
+
+    /** Mutates [node] in place. Shared by the byte-array API and the Android instrumentation path. */
+    public fun transformNode(node: ClassNode): Outcome {
         val errors = mutableListOf<String>()
+        val warnings = mutableListOf<String>()
+        val classObfuscated = (node.visibleAnnotations to node.invisibleAnnotations)
+            .has(obfuscateDescriptor)
 
-        val classObfuscated = node.annotations().has(obfuscateDescriptor)
+        // Kotlin does not put property annotations on the JVM field; it emits a synthetic
+        // `get<Name>$annotations()` method that carries them. Fold those back onto the property name.
+        val propertyObfuscated = HashSet<String>()
+        val propertyExcluded = HashSet<String>()
+        for (method in node.methods) {
+            val property = kotlinPropertyName(method.name) ?: continue
+            val annotations = method.visibleAnnotations to method.invisibleAnnotations
+            if (annotations.has(obfuscateDescriptor)) propertyObfuscated += property
+            if (annotations.has(doNotObfuscateDescriptor)) propertyExcluded += property
+        }
 
-        // Which String fields' initializers should be hidden.
         val obfuscatedFields = HashSet<String>()
         for (field in node.fields) {
             if (field.desc != STRING_TYPE) continue
-            val annotations = (field.visibleAnnotations to field.invisibleAnnotations)
-            val excluded = annotations.has(doNotObfuscateDescriptor)
-            val included = annotations.has(obfuscateDescriptor)
-            if (excluded || !(included || classObfuscated)) continue
+            val annotations = field.visibleAnnotations to field.invisibleAnnotations
+            val excluded = annotations.has(doNotObfuscateDescriptor) || field.name in propertyExcluded
+            val included = annotations.has(obfuscateDescriptor) || field.name in propertyObfuscated
+            if (excluded) continue
+            if (!(included || classObfuscated)) continue
             if (field.value != null) {
                 errors += "@Obfuscate cannot protect the compile-time constant '${field.name}' in " +
                     "${node.name.toDotted()} — its value is inlined into every use site. Remove `const`."
@@ -72,7 +104,7 @@ public class StringVeilTransformer(
             val methodWide = when (method.name) {
                 "<init>", "<clinit>" -> classObfuscated
                 else -> {
-                    val annotations = (method.visibleAnnotations to method.invisibleAnnotations)
+                    val annotations = method.visibleAnnotations to method.invisibleAnnotations
                     !annotations.has(doNotObfuscateDescriptor) &&
                         (annotations.has(obfuscateDescriptor) || classObfuscated)
                 }
@@ -94,6 +126,13 @@ public class StringVeilTransformer(
                 }
                 if (!hide) continue
 
+                SecretLiteralHeuristics.detect(value)?.let { reason ->
+                    val message = "'${node.name.toDotted()}' obfuscates a literal that looks like " +
+                        "$reason. String Veil is obfuscation, not encryption; move real secrets " +
+                        "server-side or inject them at runtime (see SECURITY.md)."
+                    if (failOnSecretLike) errors += message else warnings += message
+                }
+
                 val container = cipher.encrypt(
                     value.toByteArray(Charsets.UTF_8),
                     EncryptionContext(node.name, counter++),
@@ -105,10 +144,7 @@ public class StringVeilTransformer(
             }
         }
 
-        if (!changed) return Result(original, errors)
-        val writer = ClassWriter(ClassWriter.COMPUTE_MAXS)
-        node.accept(writer)
-        return Result(writer.toByteArray(), errors)
+        return Outcome(changed, errors, warnings)
     }
 
     private fun decodeInstructions(container: IntArray): InsnList {
@@ -157,10 +193,19 @@ private fun AbstractInsnNode.nextRealInsn(): AbstractInsnNode? {
     return candidate
 }
 
-private fun ClassNode.annotations(): Pair<List<AnnotationNode>?, List<AnnotationNode>?> =
-    visibleAnnotations to invisibleAnnotations
-
 private fun Pair<List<AnnotationNode>?, List<AnnotationNode>?>.has(descriptor: String): Boolean =
     first?.any { it.desc == descriptor } == true || second?.any { it.desc == descriptor } == true
+
+/** Recovers the property name from Kotlin's synthetic `get<Name>$annotations()` holder method. */
+private fun kotlinPropertyName(methodName: String): String? {
+    val base = methodName.removeSuffix("\$annotations")
+    if (base == methodName) return null
+    val name = when {
+        base.startsWith("get") && base.length > 3 -> base.substring(3)
+        base.startsWith("is") && base.length > 2 -> base.substring(2)
+        else -> base
+    }
+    return name.replaceFirstChar { it.lowercaseChar() }
+}
 
 private fun String.toDotted(): String = replace('/', '.')

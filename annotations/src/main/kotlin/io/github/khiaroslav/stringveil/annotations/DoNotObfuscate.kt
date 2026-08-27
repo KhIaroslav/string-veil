@@ -1,13 +1,13 @@
 package io.github.khiaroslav.stringveil.annotations
 
-/** Excludes a declaration or expression from an enclosing [Obfuscate] scope. */
+/** Excludes a declaration from an enclosing [Obfuscate] scope. */
 @MustBeDocumented
-@Retention(AnnotationRetention.SOURCE)
+// BINARY so the marker survives to the compiled class, where the bytecode transform reads it.
+@Retention(AnnotationRetention.BINARY)
 @Target(
     AnnotationTarget.CLASS,
     AnnotationTarget.FUNCTION,
     AnnotationTarget.PROPERTY,
     AnnotationTarget.FIELD,
-    AnnotationTarget.EXPRESSION,
 )
 public annotation class DoNotObfuscate

@@ -4,6 +4,7 @@ nmcp = "1.6.1"
 plugin-publish = "2.1.1"
 dokka = "2.0.0"
 asm = "9.7"
+agp = "8.7.3"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -16,3 +17,4 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
 asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
+agp-api = { module = "com.android.tools.build:gradle-api", version.ref = "agp" }

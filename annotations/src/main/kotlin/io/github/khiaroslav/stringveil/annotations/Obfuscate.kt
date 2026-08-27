@@ -29,13 +29,13 @@ public enum class ObfuscationEngine {
  * [methods]. Every result is additionally wrapped in String Veil's hardened outer container.
  */
 @MustBeDocumented
-@Retention(AnnotationRetention.SOURCE)
+// BINARY so the marker survives to the compiled class, where the bytecode transform reads it.
+@Retention(AnnotationRetention.BINARY)
 @Target(
     AnnotationTarget.CLASS,
     AnnotationTarget.FUNCTION,
     AnnotationTarget.PROPERTY,
     AnnotationTarget.FIELD,
-    AnnotationTarget.EXPRESSION,
 )
 public annotation class Obfuscate(
     public val method: ObfuscationMethod = ObfuscationMethod.RANDOM_ALL,

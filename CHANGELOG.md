@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Reworked from a Kotlin compiler plugin to a bytecode transform.** String Veil now rewrites
+  `@Obfuscate` string literals in the compiled classes with ASM — on the JVM after compilation, on
+  Android through AGP's instrumentation — instead of a K2 IR plugin. This removes the hard Kotlin
+  version requirement (any Kotlin works) and adds **Java** support. `@Obfuscate` / `@DoNotObfuscate`
+  are now BINARY-retained and declaration-level only (`class` / `fun` / `val`); expression-level
+  annotations are gone. The `compiler-plugin` module is removed; a new `bytecode` module holds the
+  transform and the (unchanged) container format. `const val` still cannot be obfuscated, and
+  interpolated-template fragments are not hidden.
 - The random pipeline methods (`RANDOM_ALL`, `RANDOM_SELECTED`) no longer stack BASE64: it is applied
   at most once per pipeline. BASE64's only effect is a ~4/3 size increase, so repeating it inflated
   containers without adding obfuscation. An explicit `method = BASE64` (or a BASE64-only selection)

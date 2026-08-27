@@ -1,4 +1,4 @@
-package io.github.khiaroslav.stringveil.compiler
+package io.github.khiaroslav.stringveil.encoder
 
 import io.github.khiaroslav.stringveil.runtime.StringDecoder
 import java.security.SecureRandom

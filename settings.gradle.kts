@@ -19,8 +19,6 @@ rootProject.name = "string-veil"
 include(
     ":annotations",
     ":bytecode",
-    ":bytecode-plugin",
-    ":compiler-plugin",
     ":gradle-plugin",
     ":native-differential",
     ":native-runtime",

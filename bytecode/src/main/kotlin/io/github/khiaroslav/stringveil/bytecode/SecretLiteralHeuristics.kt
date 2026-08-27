@@ -1,4 +1,4 @@
-package io.github.khiaroslav.stringveil.compiler
+package io.github.khiaroslav.stringveil.bytecode
 
 import kotlin.math.ln
 
