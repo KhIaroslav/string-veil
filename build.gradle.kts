@@ -90,7 +90,7 @@ subprojects {
 
 dependencies {
     add("nmcpAggregation", project(":annotations"))
-    add("nmcpAggregation", project(":compiler-plugin"))
+    add("nmcpAggregation", project(":bytecode"))
     add("nmcpAggregation", project(":gradle-plugin"))
     add("nmcpAggregation", project(":native-runtime"))
     add("nmcpAggregation", project(":runtime"))

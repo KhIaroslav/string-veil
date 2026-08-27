@@ -1,92 +1,92 @@
 package io.github.khiaroslav.stringveil.gradle
 
+import io.github.khiaroslav.stringveil.bytecode.StringVeilTransformer
+import java.io.File
+import org.gradle.api.GradleException
+import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.provider.Provider
-import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
-import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
-import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
-import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
+import org.gradle.api.tasks.SourceSetContainer
 
-/** Connects String Veil to Kotlin/JVM and Kotlin/Android compilations. */
-public class StringVeilGradlePlugin : KotlinCompilerPluginSupportPlugin {
-    private lateinit var extension: StringVeilExtension
-
+/**
+ * Applies String Veil by rewriting `@Obfuscate` string literals in the compiled bytecode after
+ * compilation. Because it works on JVM class files — not the Kotlin compiler — it is independent of
+ * the Kotlin version and covers both Kotlin and Java sources.
+ *
+ * - JVM (`java` / `org.jetbrains.kotlin.jvm`): transforms the main source set's class output.
+ * - Android (`com.android.application` / `com.android.library`): transforms via AGP's ASM
+ *   instrumentation, before dexing, decoding through the native library.
+ */
+public class StringVeilGradlePlugin : Plugin<Project> {
     override fun apply(target: Project) {
-        extension = target.extensions.create(
-            EXTENSION_NAME,
-            StringVeilExtension::class.java,
-        )
+        val extension = target.extensions.create(EXTENSION_NAME, StringVeilExtension::class.java)
 
-        target.pluginManager.withPlugin(KOTLIN_JVM_PLUGIN_ID) {
+        // The Kotlin JVM plugin applies the `java` plugin; Android does not, so these do not overlap.
+        target.pluginManager.withPlugin("java") {
             addConsumerDependencies(target, native = false)
+            wireJvm(target, extension)
         }
-        target.pluginManager.withPlugin(KOTLIN_ANDROID_PLUGIN_ID) {
+        target.pluginManager.withPlugin("com.android.application") {
             addConsumerDependencies(target, native = true)
+            StringVeilAndroidWiring.apply(target, extension)
+        }
+        target.pluginManager.withPlugin("com.android.library") {
+            addConsumerDependencies(target, native = true)
+            StringVeilAndroidWiring.apply(target, extension)
         }
     }
 
-    override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean =
-        extension.enabled.get() && kotlinCompilation.platformType in SUPPORTED_PLATFORMS
+    private fun wireJvm(target: Project, extension: StringVeilExtension) {
+        val sourceSets = target.extensions.getByType(SourceSetContainer::class.java)
+        val classesDirs = sourceSets.getByName("main").output.classesDirs
+        val failOnSecretLike = extension.failOnSecretLikeLiterals
+        val enabled = extension.enabled
+        target.tasks.named("classes").configure { classes ->
+            classes.doLast {
+                if (!enabled.getOrElse(true)) return@doLast
+                val transformer = StringVeilTransformer(
+                    failOnSecretLike = failOnSecretLike.getOrElse(false),
+                )
+                val logger = target.logger
+                classesDirs.files.forEach { dir -> obfuscate(transformer, dir, logger) }
+            }
+        }
+    }
 
-    override fun applyToCompilation(
-        kotlinCompilation: KotlinCompilation<*>,
-    ): Provider<List<SubpluginOption>> =
-        kotlinCompilation.target.project.provider {
-            listOf(
-                SubpluginOption(
-                    key = "nativeAvailable",
-                    value = (kotlinCompilation.platformType == KotlinPlatformType.androidJvm)
-                        .toString(),
-                ),
-                SubpluginOption(
-                    key = "failOnSecretLikeLiterals",
-                    value = extension.failOnSecretLikeLiterals.getOrElse(false).toString(),
-                ),
+    private fun obfuscate(
+        transformer: StringVeilTransformer,
+        dir: File,
+        logger: org.gradle.api.logging.Logger,
+    ) {
+        if (!dir.isDirectory) return
+        dir.walkTopDown().filter { it.isFile && it.extension == "class" }.forEach { classFile ->
+            val original = classFile.readBytes()
+            val result = transformer.transform(original)
+            result.warnings.forEach { logger.warn("string-veil: $it") }
+            if (result.errors.isNotEmpty()) {
+                throw GradleException("string-veil: " + result.errors.joinToString("\n"))
+            }
+            if (result.bytes !== original) classFile.writeBytes(result.bytes)
+        }
+    }
+
+    private fun addConsumerDependencies(target: Project, native: Boolean) {
+        // @Obfuscate is BINARY-retained; consumers need it at compile time only.
+        target.dependencies.add("compileOnly", module(StringVeilCoordinates.ANNOTATIONS_ARTIFACT))
+        if (native) {
+            target.dependencies.add(
+                "implementation",
+                module(StringVeilCoordinates.NATIVE_RUNTIME_ARTIFACT),
             )
         }
-
-    override fun getCompilerPluginId(): String = StringVeilCoordinates.COMPILER_PLUGIN_ID
-
-    override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact(
-        groupId = StringVeilCoordinates.GROUP,
-        artifactId = StringVeilCoordinates.COMPILER_PLUGIN_ARTIFACT,
-        version = StringVeilCoordinates.VERSION,
-    )
+        // The transformed code calls the decoder, so the runtime is needed at runtime. On Android it
+        // is also the fallback when the native library is unavailable for the device's ABI.
+        target.dependencies.add("implementation", module(StringVeilCoordinates.RUNTIME_ARTIFACT))
+    }
 
     private fun module(artifactId: String): String =
         "${StringVeilCoordinates.GROUP}:$artifactId:${StringVeilCoordinates.VERSION}"
 
-    private fun addConsumerDependencies(target: Project, native: Boolean) {
-        target.dependencies.add(
-            COMPILE_ONLY_CONFIGURATION,
-            module(StringVeilCoordinates.ANNOTATIONS_ARTIFACT),
-        )
-        if (native) {
-            target.dependencies.add(
-                IMPLEMENTATION_CONFIGURATION,
-                module(StringVeilCoordinates.NATIVE_RUNTIME_ARTIFACT),
-            )
-        }
-        // The runtime decoder is always added: on JVM it is the decoder, and on Android it is the
-        // fallback used when the native library is unavailable for the device's ABI.
-        target.dependencies.add(
-            IMPLEMENTATION_CONFIGURATION,
-            module(StringVeilCoordinates.RUNTIME_ARTIFACT),
-        )
-    }
-
     private companion object {
-        private const val EXTENSION_NAME = "stringVeil"
-        private const val COMPILE_ONLY_CONFIGURATION = "compileOnly"
-        private const val IMPLEMENTATION_CONFIGURATION = "implementation"
-
-        private const val KOTLIN_JVM_PLUGIN_ID = "org.jetbrains.kotlin.jvm"
-        private const val KOTLIN_ANDROID_PLUGIN_ID = "org.jetbrains.kotlin.android"
-
-        private val SUPPORTED_PLATFORMS = setOf(
-            KotlinPlatformType.jvm,
-            KotlinPlatformType.androidJvm,
-        )
+        const val EXTENSION_NAME = "stringVeil"
     }
 }
