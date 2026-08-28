@@ -6,7 +6,7 @@ import java.util.Locale
 /**
  * Standalone report (not a test gate) that quantifies the two costs of obfuscation: how much bigger
  * a protected container is than its plaintext, and how long the runtime decoder takes to materialize
- * it. Run via the `:compiler-plugin:benchmark` Gradle task.
+ * it. Run via the `:bytecode:benchmark` Gradle task.
  *
  * The size figures are exact; the timing figures are a rough steady-state estimate (warmup + timed
  * loop, best of a few rounds) meant for orientation, not a precise microbenchmark.

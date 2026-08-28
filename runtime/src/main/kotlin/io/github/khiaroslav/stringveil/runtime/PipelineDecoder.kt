@@ -18,7 +18,7 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Reverses the layer stack produced by the compiler's `PipelineEncoder`: reads the self-describing
+ * Reverses the layer stack produced by the build-time `PipelineEncoder`: reads the self-describing
  * layer metadata and undoes each transform (AES-CTR, base64, XOR, bit-shift) in reverse order to
  * recover the original UTF-8 bytes.
  */

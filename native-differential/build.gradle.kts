@@ -3,7 +3,7 @@ import org.gradle.api.tasks.JavaExec
 import java.io.File
 
 /**
- * Test-only module (not published) that proves the JVM `runtime` decoder and the `native-runtime`
+ * Test-only module (not published) that checks the JVM `runtime` decoder and the `native-runtime`
  * C++ decoder agree on the exact same containers.
  *
  * It host-compiles `native-runtime/src/main/cpp/native_decoder.cpp` into a shared library, then runs

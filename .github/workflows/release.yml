@@ -144,8 +144,7 @@ jobs:
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
         run: ./gradlew :gradle-plugin:publishPlugins --stacktrace --no-daemon
 
-      # Signed SLSA provenance for the published binaries. Because the archives are reproducible,
-      # these digests match what a consumer can rebuild and re-hash. Verify with:
+      # Signed build provenance for the binary archives produced by this release job. Verify with:
       #   gh attestation verify <artifact> --repo KhIaroslav/string-veil
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2

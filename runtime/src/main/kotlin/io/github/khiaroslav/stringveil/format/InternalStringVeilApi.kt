@@ -4,7 +4,7 @@ package io.github.khiaroslav.stringveil.format
  * Marks internal String Veil container-format details that are shared between the build-time cipher
  * and the runtime decoders.
  *
- * These declarations are `public` only so the compiler plugin and the runtime can share a single
+ * These declarations are `public` only so the bytecode encoder and runtime can share a single
  * definition of the format; they are **not** a stable API and may change between releases. Consumer
  * code should never opt in.
  */

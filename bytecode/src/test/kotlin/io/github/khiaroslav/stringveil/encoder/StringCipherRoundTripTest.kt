@@ -11,7 +11,7 @@ import kotlin.test.assertNotEquals
  * Round-trips every corpus case through the build-time cipher and the JVM `runtime` decoder:
  * `LayeredStringCipher.encrypt(...)` -> `StringDecoder.decode(...)` must reproduce the input.
  *
- * This is the JVM half of the JVM<->native differential guarantee. The native half reuses the same
+ * This is the JVM half of the JVM<->native differential check. The native half reuses the same
  * [DifferentialCorpus] cases (see the `native-differential` module).
  */
 class StringCipherRoundTripTest {

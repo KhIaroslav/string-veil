@@ -63,7 +63,7 @@ jobs:
       - name: Run the sample
         run: ./gradlew -p sample run --stacktrace --no-daemon
 
-  # Proves the native decoder loads and decodes on a real Android runtime (an emulator), which the
+  # Checks that the native decoder loads and decodes on a real Android runtime (an emulator), which the
   # host-only differential test cannot. Consumes String Veil from mavenLocal like a real consumer.
   android-instrumented:
     runs-on: ubuntu-latest

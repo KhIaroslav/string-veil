@@ -7,11 +7,16 @@ against is essential to using it safely.
 
 ### What String Veil protects against
 
-- **Casual and automated static inspection.** Annotated strings do not appear in plaintext in the
-  compiled class files or DEX, so they are not recoverable with `strings`, `grep`, a decompiler's
-  constant pool, or bulk APK/JAR string scraping.
-- **Low-effort scraping at scale.** Recovering a string requires understanding and reversing the
-  container format for that specific build, which does not scale cheaply across many apps.
+- **Casual and automated static inspection.** For supported declaration and bytecode shapes, selected
+  literals are replaced in the final transformed class or DEX, so they are not exposed to
+  `strings`, `grep`, a decompiler's constant-pool view, or bulk APK/JAR scraping.
+- **Low-effort scraping at scale.** Recovering selected strings requires locating the generated
+  containers and applying the shipped decoder rather than reading the original literals directly.
+
+See the README's **Current limitations** section before relying on a declaration shape. Complex
+property initializers, custom getters, generated lambdas, nested classes, and other compiler-generated
+forms are not all covered yet. Inspect the final artifact when absence of a particular plaintext
+matters.
 
 ### What String Veil does NOT protect against
 
@@ -48,9 +53,9 @@ incident, keep it off the client entirely:
 - Reserve it for low-sensitivity strings: internal endpoints, feature flags, log markers, and
   similar values you would simply rather not publish in plaintext.
 
-## Supply-chain and release hardening
+## Supply-chain and release controls
 
-The published artifacts are signed and distributed from a hardened release pipeline:
+Published artifacts are signed and distributed by a release pipeline with the following controls:
 
 - The Gradle wrapper JAR is validated against Gradle's published checksums in CI
   (`validate-wrappers`).
@@ -59,9 +64,11 @@ The published artifacts are signed and distributed from a hardened release pipel
   to that environment.
 - Central Portal deployments use `USER_MANAGED` mode, so a release is uploaded but held for a final
   manual review before it goes live.
-
-Planned further hardening (contributions welcome): pinning third-party GitHub Actions to full commit
-SHAs, and adding provenance/SLSA attestations to published artifacts.
+- Third-party GitHub Actions are pinned to full commit SHAs.
+- Binary artifacts produced by the release job receive GitHub build-provenance attestations, and the
+  GitHub release includes an SPDX SBOM.
+- Archive tasks omit entry timestamps and use reproducible entry ordering. Full byte-for-byte
+  reproducibility across operating systems and native toolchains is not currently guaranteed.
 
 ## Supported versions
 
@@ -99,6 +106,6 @@ Please include, where possible:
 
 Because String Veil is explicitly an obfuscation tool and not a cryptographic control, reports that
 amount to "the obfuscation can be reversed given the artifact" fall inside the documented threat
-model and are not treated as vulnerabilities. Reports of container-format flaws that cause crashes,
-memory-safety issues in the native decoder, incorrect decoding, or build-time information leakage
-are in scope and very welcome.
+model and are not treated as vulnerabilities. Reports of supported annotated literals remaining in
+the final transformed output, container-format flaws that cause crashes, memory-safety issues in the
+native decoder, incorrect decoding, or build-time information leakage are in scope and very welcome.

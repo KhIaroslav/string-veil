@@ -1,75 +1,20 @@
 # String Veil
 
-Selective, build-time string obfuscation for Kotlin, Java, and Android, driven by `@Obfuscate`
-annotations. String Veil rewrites annotated string literals in the compiled **bytecode** — after
-compilation, so it is independent of the Kotlin compiler version — and restores them at runtime.
+Selective, build-time string obfuscation for Kotlin, Java, and Android. String Veil rewrites
+annotated literals in compiled JVM bytecode and restores them at runtime.
 
 [![CI](https://github.com/KhIaroslav/string-veil/actions/workflows/ci.yml/badge.svg)](https://github.com/KhIaroslav/string-veil/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Kotlin | Java](https://img.shields.io/badge/kotlin%20%7C%20java-any-blue.svg?logo=kotlin)](https://kotlinlang.org)
+[![Kotlin | Java](https://img.shields.io/badge/kotlin%20%7C%20java-JVM%20%7C%20Android-blue.svg?logo=kotlin)](https://kotlinlang.org)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.khiaroslav.stringveil/gradle-plugin.svg?label=Maven%20Central)](https://central.sonatype.com/namespace/io.github.khiaroslav.stringveil)
+[![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/io.github.khiaroslav.string-veil)](https://plugins.gradle.org/plugin/io.github.khiaroslav.string-veil)
 
-> **Status: early development (`0.1.0-alpha01`, unreleased).** The container format is not yet
-> stable and may change without a compatibility shim between pre-release versions.
+> **Status: early development (`0.1.0-alpha01`, first public pre-release).** The container format and
+> public API may change between pre-release versions.
 
-## What String Veil is — and what it is not
+## Install
 
-String Veil is an **obfuscation** tool. It makes strings harder to find and read through casual
-inspection — `strings`, `grep`, a decompiler's constant pool, a quick scan of an APK. That is its
-entire job, and it does it well.
-
-String Veil is **not encryption** and **not a secrets vault**. There is no external key. By design,
-everything required to reconstruct a protected string travels inside the artifact, because the code
-must be able to decode it at runtime with no secret input from you. A determined attacker who has
-your artifact — and especially anyone reading these open sources — can recover the plaintext. Treat
-it as a **speed bump**, not a lock.
-
-**Do not use String Veil to store long-lived secrets** — API keys, passwords, OAuth client secrets,
-signing material. Those belong on a server, in a platform secrets manager, or injected at runtime
-from a trusted source. See [SECURITY.md](SECURITY.md) for the full threat model.
-
-**Good fits**
-
-- Raising the cost of static analysis and automated string scraping of your app.
-- Hiding internal endpoints, feature flags, log markers, and other low-sensitivity strings you
-  simply would rather not advertise in plaintext.
-- A complement to R8/ProGuard, not a replacement for it.
-
-**Bad fits**
-
-- Anything you would be harmed by if a motivated attacker read it. If leaking the value is a real
-  incident, keep it off the client entirely.
-
-## Modules
-
-| Module           | Purpose                                                                          | Published as |
-|------------------|----------------------------------------------------------------------------------|--------------|
-| `annotations`    | `@Obfuscate` and `@DoNotObfuscate` markers (BINARY-retained).                     | JAR          |
-| `bytecode`       | ASM bytecode transform + the container encoder and randomized format.            | JAR          |
-| `runtime`        | Portable Kotlin/JVM container decoder.                                            | JAR          |
-| `native-runtime` | Android AAR with a JNI bridge and a native C++ decoder for four ABIs.             | AAR          |
-| `gradle-plugin`  | Runs the transform (JVM after compile; Android via AGP) and adds the decoder.    | JAR / Plugin |
-
-## Requirements
-
-String Veil transforms compiled JVM bytecode with ASM, **after** the Kotlin/Java compiler runs, so
-it is not tied to a Kotlin version.
-
-| Component        | Version / value                                              |
-|------------------|-------------------------------------------------------------|
-| Kotlin / Java    | Any — the transform runs on compiled bytecode, not sources  |
-| Gradle           | 8.14+ (developed and tested against 8.14.2)                 |
-| Android Gradle Plugin | 8.2+ (uses the ASM instrumentation API)                |
-| JDK (toolchain)  | 17                                                          |
-| Platforms        | JVM (Kotlin or Java) and Android                            |
-| Android `minSdk` | 21 (native ABIs: arm64-v8a, armeabi-v7a, x86, x86_64)       |
-| Android NDK      | Only to build `native-runtime` from source (27.3.13750724).|
-
-Consumers of the published Android AAR do **not** need the NDK.
-
-## Installation
-
-Declare the standard public repositories in the consumer project's `settings.gradle.kts`:
+Declare the public repositories in the consumer project's `settings.gradle.kts`:
 
 ```kotlin
 pluginManagement {
@@ -88,7 +33,7 @@ dependencyResolutionManagement {
 }
 ```
 
-Apply String Veil in the application or library module:
+Apply String Veil in an application or library module:
 
 ```kotlin
 plugins {
@@ -96,267 +41,208 @@ plugins {
 }
 ```
 
-No manual runtime dependency is required. The plugin adds the annotations and the
-appropriate decoder automatically: Android compilations receive `native-runtime`; JVM compilations
-receive `runtime`.
+The plugin adds the annotations and appropriate runtime automatically. No manual runtime dependency
+is required.
 
-String Veil is enabled by default. Disable it (for example in debug builds) with:
+## Use
 
-```kotlin
-stringVeil {
-    enabled = false
-}
-```
-
-## Quickstart
+Annotate a supported declaration:
 
 ```kotlin
 import io.github.khiaroslav.stringveil.annotations.Obfuscate
 
 @Obfuscate
 val internalEndpoint = "https://internal.example.com/v3/telemetry"
+
+@Obfuscate
+fun internalMarker(): String = "internal-marker"
 ```
 
-After compilation, String Veil rewrites the literal in the bytecode into a call equivalent to
-`StringDecoder.decode(container)` (or `NativeStringDecoder.decode(container)` on Android), and the
-plaintext no longer appears in the compiled class or DEX. At runtime the value is restored
-transparently — you use the property exactly as before. `@Obfuscate` applies to declarations —
-`class`, `fun`, `val`/`var` — and hides the string literals in that scope; `@DoNotObfuscate` opts a
-member back out.
+For supported bytecode shapes, the final transformed class contains a decoder call and a randomized
+integer container instead of the selected plaintext literal. The runtime reconstructs the original
+value when the declaration is used.
 
-For a complete, runnable example that consumes the plugin from source, see [`sample/`](sample) and
-run `./gradlew -p sample run`.
-
-## Obfuscation methods
-
-> **Note.** The bytecode transform currently applies the default randomized pipeline to every
-> obfuscated literal; the `method` / `methods` / `repetitions` / `engine` arguments below are accepted
-> for source compatibility but not yet read. The container format and methods are described here for
-> reference.
+`@Obfuscate` can be placed on classes, functions, properties, and fields. `@DoNotObfuscate` excludes
+a member from an enclosing class-level scope:
 
 ```kotlin
-import io.github.khiaroslav.stringveil.annotations.Obfuscate
-import io.github.khiaroslav.stringveil.annotations.ObfuscationEngine
-import io.github.khiaroslav.stringveil.annotations.ObfuscationMethod
+import io.github.khiaroslav.stringveil.annotations.DoNotObfuscate
 
-@Obfuscate(method = ObfuscationMethod.BIT_SHIFT)
-val shifted = "internal-value"
+@Obfuscate
+class BuildInfo {
+    val internalFlag = "internal-feature-flag"
 
-@Obfuscate(method = ObfuscationMethod.BIT_XOR)
-val xored = "internal-value"
-
-@Obfuscate(method = ObfuscationMethod.BASE64)
-val encoded = "internal-value"
-
-@Obfuscate(method = ObfuscationMethod.AES)
-val aesLayer = "internal-value"
-
-@Obfuscate(method = ObfuscationMethod.RANDOM_ALL, repetitions = 5)
-val mixed = "internal-value"
-
-@Obfuscate(
-    method = ObfuscationMethod.RANDOM_SELECTED,
-    methods = [ObfuscationMethod.BIT_XOR, ObfuscationMethod.AES],
-    repetitions = 5,
-)
-val selected = "internal-value"
-
-@Obfuscate(
-    method = ObfuscationMethod.RANDOM_ALL,
-    repetitions = 5,
-    engine = ObfuscationEngine.NATIVE,
-)
-val native = "android-only-value"
-```
-
-`@Obfuscate` defaults to `RANDOM_ALL` with three independently randomized layers. `repetitions` is
-limited to `1..16`; more layers increase build output and runtime work. Each layer is one of the
-methods above, and the whole pipeline is then sealed inside a per-string randomized container with
-random padding, masked key material, a sparse permutation, decoy words, and an ARX block transform.
-
-Under the random methods (`RANDOM_ALL`, `RANDOM_SELECTED`), `BASE64` is applied at most once per
-pipeline: it only inflates size by ~4/3 and adds no obfuscation when stacked. An explicit
-`method = BASE64` (or a `BASE64`-only selection) is honored for every layer. See
-[`:bytecode:benchmark`](#building-and-testing) for the resulting size and decode costs.
-
-> **A note on `AES`.** The `AES` method applies AES/CTR as one reversible layer. Because String Veil
-> has no external key, the AES key is randomly generated at build time and stored — masked —
-> **inside the same container** as the ciphertext. It adds variety to the obfuscation pipeline; it
-> does **not** add confidentiality in the cryptographic sense. See [SECURITY.md](SECURITY.md).
-
-### Scoping with `@DoNotObfuscate`
-
-`@Obfuscate` on a class, function, or property applies to the string literals in its scope.
-`@DoNotObfuscate` excludes a member from an enclosing `@Obfuscate` scope.
-
-### Secret-like literal warnings
-
-Because String Veil is obfuscation and not encryption, the plugin warns at compile time when an
-annotated literal looks like a real secret (AWS/GitHub/Google/Slack tokens, private-key blocks,
-JWTs, or high-entropy tokens). Treat the warning as a prompt to move the value server-side. To
-hard-fail such builds instead:
-
-```kotlin
-stringVeil {
-    failOnSecretLikeLiterals = true
+    @DoNotObfuscate
+    val publicLabel = "String Veil sample"
 }
 ```
 
-## Decoder engines
+The annotation currently uses one default randomized, three-layer pipeline. The declared
+`method`, `methods`, `repetitions`, and `engine` arguments are reserved for compatibility with the
+earlier compiler-plugin prototype and are **not read by the bytecode transform**. Do not rely on them
+until a release explicitly documents their support.
 
-- `AUTO` (default) — JNI on Android, the Kotlin/JVM decoder elsewhere.
-- `NATIVE` — requires an Android compilation and fails the build if `native-runtime` is unavailable.
-- `JVM` — forces the portable Kotlin decoder everywhere.
+Android builds call `NativeStringDecoder`, which uses JNI when its library loads and falls back to the
+portable JVM decoder otherwise. JVM builds call `StringDecoder` directly. Per-annotation engine
+selection is not implemented yet.
 
-The Android AAR packages `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`, and the plugin always adds
-the `runtime` artifact on Android as well. If the native library cannot be loaded for the device's
-ABI, `NativeStringDecoder.decode` transparently falls back to the JVM decoder instead of crashing.
-The native decoder raises the cost of static analysis further, but an attacker can still hook the
-JNI bridge or read the decoded value from memory — the threat model above still applies.
+## Gradle options
+
+String Veil is enabled by default:
+
+```kotlin
+stringVeil {
+    enabled = true
+    failOnSecretLikeLiterals = false
+}
+```
+
+- `enabled` enables the transform for supported JVM and Android projects.
+- `failOnSecretLikeLiterals` turns warnings for credential-shaped annotated literals into build
+  errors.
+
+The warning is deliberately conservative and may produce false positives or miss an unknown secret
+format. Its purpose is to remind you that client-side obfuscation is not secret storage.
+
+## Security model
+
+String Veil is an **obfuscator**, not encryption and not a secrets vault. Everything required to
+decode a string is shipped in the application. A motivated attacker can extract the decoder, invoke
+it, hook the JVM/JNI boundary, or read the materialized value from memory.
+
+Use it to raise the cost of casual static inspection and bulk string scraping. Do not use it for
+passwords, private keys, OAuth client secrets, signing material, or long-lived high-value API keys.
+Keep those values off the client.
+
+See [SECURITY.md](SECURITY.md) for the complete threat model and private vulnerability-reporting
+process.
+
+## Current limitations
+
+- **`const val` is not supported.** Its value is inlined at use sites. Selecting a `ConstantValue`
+  field produces a build error.
+- **Only direct string constants in supported declaration bytecode are transformed.** Complex
+  property initializers such as `if`/`when`, collection initializers, delegated properties, custom
+  getters, compiler-generated lambdas, and nested or anonymous classes may fall outside the selected
+  declaration. Do not assume those forms are protected without inspecting the final output.
+- **Interpolated template recipes are not transformed.** Some template fragments compile to
+  `invokedynamic` metadata rather than `LDC` string instructions.
+- **Resources are outside the transform.** Android resources, `AndroidManifest.xml`, assets,
+  `BuildConfig`, and strings in dependencies are not processed.
+- **String identity can change.** A decoded value is a new `String`, so Java reference equality and
+  Kotlin `===` may differ from an interned literal. Use value equality.
+- **Runtime and size overhead are expected.** Each use builds an integer container and decodes it.
+  Avoid protecting literals in hot loops, and benchmark applications with many or very long strings.
+- **JVM consumer builds do not currently support Gradle's configuration cache.** The JVM integration
+  mutates the main `classes` output after compilation and must be moved to a dedicated task before
+  configuration-cache compatibility can be advertised.
+- **Reflection and shrinking need care.** If a protected literal names a class, method, JNI symbol, or
+  resource, configure R8/ProGuard so that the referenced element is retained and named as expected.
+- **Per-annotation transform and engine settings are not implemented.** Every selected literal uses
+  the current default pipeline; the project type selects the decoder path.
+
+Until fail-closed coverage exists for all supported language shapes, inspect the final JAR, AAR, or
+DEX when the absence of a particular plaintext matters. A missed supported case is a bug and should
+be reported with a minimal reproduction.
 
 ## How it works
 
-1. After the Kotlin/Java compiler runs, the Gradle plugin post-processes the compiled classes (on
-   Android, through AGP's ASM instrumentation, before dexing).
-2. An ASM transform reads the `@Obfuscate` / `@DoNotObfuscate` annotations that survive to bytecode
-   and finds the string constants (`LDC`) in the selected classes, methods, and fields.
-3. Each selected literal is encoded through a randomized pipeline of reversible transforms and sealed
-   into an integer container (layer metadata, a **non-cryptographic checksum** that guards against
-   accidental corruption rather than tampering, and decoy material). The `LDC` is replaced with a
-   call to the decoder, so the plaintext never reaches the compiled class file / DEX.
-4. At runtime the decoder (`runtime` on the JVM, `native-runtime` on Android) reverses the pipeline
-   and materializes the original string.
+1. Kotlin or Java compiles normally.
+2. String Veil reads declaration annotations from the compiled classes and selects supported `LDC`
+   string instructions.
+3. Each selected value is passed through a randomized reversible pipeline and placed in an integer
+   container with masked metadata, padding, decoy words, a sparse permutation, and a
+   non-cryptographic corruption checksum.
+4. The literal instruction is replaced with a runtime decoder call.
+5. JVM builds transform the main class output; Android builds transform project classes through AGP's
+   `ScopedArtifacts` classes pipeline before dexing or AAR packaging.
 
-## Limitations
+AES/CTR may appear as one reversible layer, but its key is stored in the same container. It adds
+format diversity, not cryptographic confidentiality.
 
-- **`const val` cannot be obfuscated.** A `const`/`ConstantValue` field is inlined into every use
-  site (including other modules), so it cannot be recovered from bytecode. Annotating one is a build
-  error — drop `const` (a plain `val` obfuscates and, for a secret, is what you want anyway).
-- **Declaration-level only.** `@Obfuscate` applies to a `class`, `fun`, or `val`/`var`, not to a
-  single expression. Inside an `@Obfuscate` function every string literal is hidden.
-- **Interpolated template fragments are not hidden.** The constant parts of `"...${x}..."` compile to
-  an `invokedynamic` recipe, not an `LDC`, so the transform leaves them in place. Put whole secrets in
-  a plain literal.
-- **Only string literals in the compiled classes are protected.** String Veil rewrites bytecode, so
-  it does not touch Android resources, `AndroidManifest.xml`, `strings.xml`, assets, or `BuildConfig`.
-  Keep sensitive strings out of those surfaces yourself.
-- **Per-annotation `method` / `repetitions` / `engine` arguments are not yet applied** by the bytecode
-  transform; every literal uses the default randomized pipeline for now.
+## Modules
 
-## Local development
+| Module | Purpose | Artifact |
+|---|---|---|
+| `annotations` | `@Obfuscate` and `@DoNotObfuscate` | JAR |
+| `bytecode` | ASM transform, pipeline encoder, randomized container | JAR |
+| `runtime` | Portable Kotlin/JVM decoder and shared format definitions | JAR |
+| `native-runtime` | Android AAR with JNI bridge and C++ decoder | AAR |
+| `gradle-plugin` | JVM and Android build integration | Gradle plugin/JAR |
+| `native-differential` | JVM/native compatibility and fuzz-test harnesses | development only |
 
-To test an unpublished checkout, publish all artifacts to your local Maven repository:
+## Compatibility
+
+The transform operates on class files rather than Kotlin compiler internals, so it is not pinned to a
+specific K2 IR API. Compatibility is still verified against concrete tool versions rather than
+claimed for every past or future compiler.
+
+| Component | Currently verified |
+|---|---|
+| Gradle | 8.14.2 |
+| Kotlin | 2.3.21 |
+| JDK toolchain | 17 |
+| Android Gradle Plugin | 8.7.3 |
+| Android compile SDK | 34 |
+| Android AAR `minSdk` | 21 |
+| Native ABIs | `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` |
+| Android NDK for source builds | 27.3.13750724 |
+
+Consumers of the published Android AAR do not need the NDK.
+
+## Build and test
 
 ```bash
-./gradlew publishToMavenLocal
+./gradlew test \
+  :gradle-plugin:validatePlugins \
+  :native-differential:nativeDifferentialTest \
+  :native-runtime:assembleRelease
 ```
 
-Add `mavenLocal()` to both `pluginManagement.repositories` and
-`dependencyResolutionManagement.repositories` in the consumer project's `settings.gradle.kts`, and
-apply the plugin using the version from `VERSION_NAME` in `gradle.properties`.
-
-## Building and testing
-
-```bash
-./gradlew test :native-differential:nativeDifferentialTest :native-runtime:assembleRelease :gradle-plugin:validatePlugins publishToMavenLocal
-```
-
-Building `native-runtime` from source requires an installed Android NDK. Set `STRING_VEIL_NDK_HOME`
-(or `stringVeilNdkDir`) when the NDK cannot be found through `local.properties`.
-
-### Differential decoder testing
-
-The Kotlin (`runtime`) and C++ (`native-runtime`) decoders are two independent implementations of
-the same container format, so they are tested to agree byte-for-byte:
-
-- `StringCipherRoundTripTest` (in `bytecode`) round-trips a broad corpus — every method,
-  `RANDOM_ALL`/`RANDOM_SELECTED`, repetitions `1..16`, ASCII/Unicode/emoji/control bytes, plus 500
-  randomized fuzz cases — through the build-time cipher and the JVM decoder.
-- `:native-differential:nativeDifferentialTest` host-compiles the C++ decoder into a shared library,
-  loads it through the real JNI path (`System.loadLibrary` → `JNI_OnLoad` → `RegisterNatives`), and
-  decodes the *same* containers with it, asserting they match the JVM result. This exercises the full
-  JNI bridge — just on the host architecture — and runs wherever a C++ toolchain and JNI headers are
-  present (including CI), skipping gracefully elsewhere with no Android device required.
-- The [`android-test/`](android-test) module closes the remaining gap: an instrumented test that runs
-  on a real Android runtime (an `x86_64` emulator in CI) and asserts the NDK-built `.so` loads for the
-  device's ABI and decodes an `@Obfuscate` literal — i.e. that the NATIVE engine is actually in use,
-  not the JVM fallback.
-
-### Fuzzing the native decoder
-
-The C++ decoder parses a raw `int[]` container, so its parser is fuzzed under AddressSanitizer and
-UndefinedBehaviorSanitizer to prove it rejects malformed or hostile input without out-of-bounds
-reads, hangs, or undefined behavior (the JVM decoder throws on the same input):
+Additional checks:
 
 ```bash
 ./gradlew :native-differential:nativeFuzzTest -PstringVeil.fuzzRuns=2000000
-```
-
-The harness (`native-runtime/src/test/cpp/fuzz_open_container.cpp`) replays the valid differential
-corpus and then runs a bounded random-mutation loop. It needs only a C++17 compiler with
-`-fsanitize=address,undefined` (no libFuzzer runtime). It is a dedicated task rather than part of
-`check` — CI runs it on Linux, where the sanitizer runtimes are reliable.
-
-### Benchmarks
-
-To see the size and speed cost of obfuscation — container-size overhead per method and configuration,
-plus decode throughput — run:
-
-```bash
 ./gradlew :bytecode:benchmark
+./gradlew -p sample run
 ```
 
-Size figures are exact; timing is a rough steady-state estimate and machine-dependent, so this is a
-report rather than a `check` gate.
+The differential suite compares the JVM and C++ decoders over the same corpus. The native fuzz task
+replays valid seeds and random mutations under ASan/UBSan; it is a bounded bug-finding check, not a
+proof that every possible input is safe.
 
-### API documentation
+Building `native-runtime` from source requires an installed Android NDK. Set
+`STRING_VEIL_NDK_HOME` or `stringVeilNdkDir` when it cannot be discovered through
+`local.properties`.
 
-Generate aggregated HTML API docs for the consumer-facing modules (`annotations`, `runtime`,
-`gradle-plugin`) with [Dokka](https://kotlinlang.org/docs/dokka-introduction.html):
+For local consumer testing, run `./gradlew publishToMavenLocal` and put `mavenLocal()` **before**
+public repositories in both repository blocks. The [sample](sample) uses an included build and needs
+no local publication. The [Android instrumented test](android-test) uses Maven Local and a connected
+device or emulator.
+
+Generate API documentation with:
 
 ```bash
 ./gradlew dokkaGenerate
 ```
 
-The docs land in `build/dokka/html`.
+The output is written to `build/dokka/html`.
 
-## Publishing
+## Releases and supply chain
 
-Release tags publish the Maven artifacts to Maven Central, the Gradle plugin to the Plugin Portal,
-and create a GitHub release. The tag must exactly match `VERSION_NAME`, prefixed with `v`:
+Release tags publish signed Maven artifacts, the Gradle plugin, a GitHub release, build-provenance
+attestations, and an SPDX SBOM. Archive tasks remove entry timestamps and use reproducible entry
+ordering. Full byte-for-byte reproducibility across different operating systems and native
+toolchains is not currently claimed.
 
-```bash
-git tag v0.1.0-alpha01
-git push origin v0.1.0-alpha01
-```
-
-The release workflow runs in a manually approved `release` environment and uploads to the Central
-Portal in `USER_MANAGED` mode, so the deployment is held for a final manual review before it goes
-live. See [`.github/workflows/release.yml`](.github/workflows/release.yml) for the required secrets
-and the `io.github.khiaroslav` namespace verification steps.
-
-### Supply chain
-
-- **Reproducible artifacts.** Published jars and the AAR strip embedded timestamps and pin entry
-  order, so a given source revision builds byte-for-byte identical archives on any machine.
-- **Signed build provenance.** The release attests every published binary with
-  [SLSA build provenance](https://slsa.dev/) via GitHub's attestation service. Because the archives
-  are reproducible, the attested digests match what you can rebuild yourself. Verify with:
-
-  ```bash
-  gh attestation verify <artifact.jar> --repo KhIaroslav/string-veil
-  ```
-
-- **SBOM.** Each release attaches an SPDX software bill of materials
-  (`string-veil-sbom.spdx.json`) as a GitHub release asset.
-- **Pinned CI actions.** Every GitHub Action is pinned to a commit SHA.
+Maintainer release instructions live in [CONTRIBUTING.md](CONTRIBUTING.md); supply-chain controls are
+described in [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for build, style, and PR
-conventions, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Security
-issues have a separate, private disclosure process in [SECURITY.md](SECURITY.md) — please do not
-open a public issue for them.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Report vulnerabilities through
+the private process in [SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 

@@ -1,6 +1,11 @@
 package io.github.khiaroslav.stringveil.annotations
 
-/** Available build-time transformations. */
+/**
+ * Transformation identifiers reserved by the annotation API.
+ *
+ * The current bytecode transform uses its default randomized pipeline and does not read the
+ * per-annotation value yet.
+ */
 public enum class ObfuscationMethod {
     BIT_SHIFT,
     BIT_XOR,
@@ -10,23 +15,33 @@ public enum class ObfuscationMethod {
     RANDOM_SELECTED,
 }
 
-/** Selects where the protected container is decoded. */
+/**
+ * Decoder preferences reserved by the annotation API.
+ *
+ * The current Gradle integration selects the decoder from the project type and does not read this
+ * per-annotation value yet.
+ */
 public enum class ObfuscationEngine {
-    /** Uses JNI for Android builds and the JVM runtime elsewhere. */
+    /** Intended to use JNI for Android builds and the JVM runtime elsewhere. */
     AUTO,
 
-    /** Uses the portable Kotlin/JVM decoder. */
+    /** Intended to request the portable Kotlin/JVM decoder. */
     JVM,
 
-    /** Uses the Android native library. Only valid for Android compilations. */
+    /** Intended to request the Android native library. */
     NATIVE,
 }
 
 /**
- * Marks a declaration or string expression whose string literals must be obfuscated.
+ * Marks a declaration whose directly emitted string constants are candidates for obfuscation.
  *
- * [RANDOM_ALL] selects a fresh method for every repetition. [RANDOM_SELECTED] selects only from
- * [methods]. Every result is additionally wrapped in String Veil's hardened outer container.
+ * The current bytecode transform supports direct constants in specific class, function, property,
+ * and field bytecode shapes. Compiler-generated lambdas, nested classes, custom getters, and complex
+ * property initializers may not belong to the annotated declaration in bytecode; see the README's
+ * limitations before relying on those forms.
+ *
+ * [method], [methods], [repetitions], and [engine] are retained for source compatibility with the
+ * earlier compiler-plugin prototype but are not read by the current bytecode transform.
  */
 @MustBeDocumented
 // BINARY so the marker survives to the compiled class, where the bytecode transform reads it.

@@ -4,5 +4,8 @@
 # Security-sensitive areas — always request the maintainer's review.
 /SECURITY.md @KhIaroslav
 /.github/ @KhIaroslav
-/compiler-plugin/ @KhIaroslav
+/annotations/ @KhIaroslav
+/bytecode/ @KhIaroslav
+/gradle-plugin/ @KhIaroslav
+/runtime/ @KhIaroslav
 /native-runtime/ @KhIaroslav

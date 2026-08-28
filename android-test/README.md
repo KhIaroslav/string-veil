@@ -15,6 +15,6 @@ first:
 The second command needs a running emulator or a connected device with an ABI the AAR ships
 (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`). CI runs it on an `x86_64` emulator.
 
-The test asserts `NativeStringDecoder.isNativeAvailable()` (the `.so` loaded, so the NATIVE engine —
-not the JVM fallback — is in use) and that the `@Obfuscate`-protected literal decodes to its original
-value.
+The test asserts `NativeStringDecoder.isNativeAvailable()` (the `.so` loaded, so the native path
+rather than the JVM fallback is in use) and that the `@Obfuscate`-selected literal decodes to its
+original value.

@@ -23,4 +23,4 @@ You will see calls to `StringDecoder.decode(int[])` in place of the string liter
 plaintext that remains is the one literal marked `@DoNotObfuscate`.
 
 See [`src/main/kotlin/.../Main.kt`](src/main/kotlin/io/github/khiaroslav/stringveil/sample/Main.kt)
-for declaration-level, expression-level, per-method, and opt-out usage.
+for property-level, function-level, class-level, and opt-out usage.

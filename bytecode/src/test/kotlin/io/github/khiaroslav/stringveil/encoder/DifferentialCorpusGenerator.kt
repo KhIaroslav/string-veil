@@ -11,8 +11,8 @@ import java.security.SecureRandom
  * container with the JVM [StringDecoder] (so a broken corpus fails here, loudly), and serializes the
  * `[label, plaintext, container]` triples to the path given as the first argument.
  *
- * Run via the `:compiler-plugin:generateDifferentialCorpus` Gradle task, which puts the compiler and
- * runtime classes on the classpath.
+ * Run via the `:bytecode:generateDifferentialCorpus` Gradle task, which puts the encoder and runtime
+ * classes on the classpath.
  */
 fun main(args: Array<String>) {
     require(args.isNotEmpty()) { "usage: DifferentialCorpusGenerator <output-file>" }

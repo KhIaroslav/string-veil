@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
  *
  * <p>Because the JVM {@code StringDecoder} already validated every one of these containers when the
  * corpus was written, native-result == recorded-plaintext is exactly the JVM<->native agreement we
- * want to prove. This runs in a forked JVM so that {@code NativeStringDecoder} is loaded by the
+ * want to check. This runs in a forked JVM so that {@code NativeStringDecoder} is loaded by the
  * system class loader, which is the loader {@code JNI_OnLoad}'s {@code FindClass} uses to bind the
  * native method.
  *
