@@ -20,8 +20,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Maven and Gradle Plugin Portal descriptions now include Java, JVM, and Android support.
 - Gradle Plugin Portal metadata no longer claims configuration-cache compatibility while the JVM
   integration still mutates the `classes` output in a task action.
-- The release workflow validates the signing key/passphrase pair before the full build and marks
-  SemVer pre-release tags as GitHub pre-releases.
+- The release workflow marks SemVer pre-release tags as GitHub pre-releases.
 - The published artifacts are built with Kotlin 1.9.24 instead of 2.3.21, lowering the
   `kotlin-stdlib` version consumers inherit through the POM.
 - The published `annotations`, `runtime`, and native-bridge classes now target Java 8 bytecode
