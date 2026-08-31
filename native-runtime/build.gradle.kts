@@ -72,9 +72,8 @@ val compileBridgeJava by tasks.registering(JavaCompile::class) {
     source(fileTree("src/main/java") { include("**/*.java") })
     classpath = bridgeCompileClasspath
     destinationDirectory.set(bridgeClasses)
-    sourceCompatibility = "17"
-    targetCompatibility = "17"
-    options.release.set(17)
+    sourceCompatibility = "1.8"
+    targetCompatibility = "1.8"
 }
 
 val classesJar by tasks.registering(Jar::class) {

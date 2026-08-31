@@ -181,7 +181,8 @@ claimed for every past or future compiler.
 |---|---|
 | Gradle | 8.14.2 |
 | Kotlin | 1.9.24 |
-| JDK toolchain | 17 |
+| JDK toolchain (to build) | 17 |
+| Published bytecode target / minimum consumer JDK | 8 |
 | Android Gradle Plugin | 8.7.3 |
 | Android compile SDK | 34 |
 | Android AAR `minSdk` | 21 |

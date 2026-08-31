@@ -22,6 +22,9 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   SemVer pre-release tags as GitHub pre-releases.
 - The published artifacts are built with Kotlin 1.9.24 instead of 2.3.21, lowering the
   `kotlin-stdlib` version consumers inherit through the POM.
+- The published `annotations`, `runtime`, and native-bridge classes now target Java 8 bytecode
+  (down from Java 17), and the published module metadata declares `org.gradle.jvm.version` 8, so
+  consumers on JDK 8 or 11 are no longer forced onto JDK 17. The build still uses a JDK 17 toolchain.
 
 ### Fixed
 
