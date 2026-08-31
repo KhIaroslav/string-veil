@@ -104,6 +104,9 @@ jobs:
       - name: Publish String Veil to the local Maven repository
         run: ./gradlew publishToMavenLocal --stacktrace --no-daemon
 
+      - name: Verify the packaged AAR has no obfuscated plaintext
+        run: ./gradlew -p android-test verifyObfuscatedAar --stacktrace --no-daemon
+
       - name: Run instrumented tests on an emulator
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
