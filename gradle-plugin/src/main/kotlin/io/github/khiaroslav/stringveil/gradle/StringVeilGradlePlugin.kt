@@ -9,12 +9,13 @@ import org.gradle.api.tasks.SourceSetContainer
 
 /**
  * Applies String Veil by rewriting `@Obfuscate` string literals in the compiled bytecode after
- * compilation. Because it works on JVM class files — not the Kotlin compiler — it is independent of
- * the Kotlin version and covers both Kotlin and Java sources.
+ * compilation. It works on JVM class files rather than Kotlin compiler internals and covers supported
+ * Kotlin and Java bytecode shapes; compatibility is verified against concrete tool versions.
  *
  * - JVM (`java` / `org.jetbrains.kotlin.jvm`): transforms the main source set's class output.
- * - Android (`com.android.application` / `com.android.library`): transforms via AGP's ASM
- *   instrumentation, before dexing, decoding through the native library.
+ * - Android (`com.android.application` / `com.android.library`): transforms project classes
+ *   through AGP's `ScopedArtifacts` pipeline before dexing or AAR packaging and calls the native
+ *   bridge, which has a JVM fallback.
  */
 public class StringVeilGradlePlugin : Plugin<Project> {
     override fun apply(target: Project) {

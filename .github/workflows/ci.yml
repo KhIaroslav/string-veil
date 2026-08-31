@@ -63,7 +63,7 @@ jobs:
       - name: Run the sample
         run: ./gradlew -p sample run --stacktrace --no-daemon
 
-  # Proves the native decoder loads and decodes on a real Android runtime (an emulator), which the
+  # Checks that the native decoder loads and decodes on a real Android runtime (an emulator), which the
   # host-only differential test cannot. Consumes String Veil from mavenLocal like a real consumer.
   android-instrumented:
     runs-on: ubuntu-latest
@@ -103,6 +103,9 @@ jobs:
 
       - name: Publish String Veil to the local Maven repository
         run: ./gradlew publishToMavenLocal --stacktrace --no-daemon
+
+      - name: Verify the packaged AAR has no obfuscated plaintext
+        run: ./gradlew -p android-test verifyObfuscatedAar --stacktrace --no-daemon
 
       - name: Run instrumented tests on an emulator
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0

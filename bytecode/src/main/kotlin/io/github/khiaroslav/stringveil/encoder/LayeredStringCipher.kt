@@ -8,8 +8,9 @@ import java.security.SecureRandom
 
 /**
  * Composes the two stages of the format: encode the plaintext through the [PipelineEncoder], then
- * seal the result with the [OuterContainerSealer]. The raw key and ciphertext are never emitted as
- * adjacent arrays, and every intermediate plaintext buffer is wiped.
+ * seal the result with the [OuterContainerSealer]. The raw key and ciphertext are not emitted as
+ * adjacent arrays. Temporary pipeline buffers are cleared on the successful path; callers remain
+ * responsible for their input buffer, and immutable runtime strings cannot be wiped.
  */
 public class LayeredStringCipher(
     random: SecureRandom = SecureRandom(),

@@ -22,18 +22,22 @@ import org.objectweb.asm.tree.MethodInsnNode
 
 /**
  * Rewrites `@Obfuscate` string literals in a single compiled class: each selected `LDC "..."` is
- * replaced with `StringDecoder.decode(<int[] container>)`. Works on any JVM class file (Kotlin or
- * Java), independent of the Kotlin compiler version.
+ * replaced with `StringDecoder.decode(<int[] container>)`. It operates on Kotlin or Java class files
+ * without binding to Kotlin compiler internals; compatibility still depends on the emitted bytecode
+ * and annotation layout and is verified against concrete tool versions.
  *
  * Scope (declaration-level, resolved from annotations that survive to bytecode):
- * - `@Obfuscate` on the class hides every string in its fields and methods…
- * - …except members marked `@DoNotObfuscate`.
- * - `@Obfuscate` on a single field or method hides only that member.
+ * - `@Obfuscate` on a class selects direct string constants in that class's methods.
+ * - members marked `@DoNotObfuscate` are excluded from a supported enclosing class scope.
+ * - `@Obfuscate` on a method selects direct string constants in that bytecode method.
+ * - a selected String field is recognized when its literal is stored directly by the next real
+ *   instruction.
  * - a `const`/`ConstantValue` field selected for obfuscation is reported as an error (its value is
  *   inlined into every use site and cannot be recovered from bytecode).
  *
- * The annotation descriptors and decoder are injectable so tests and the Android path can drive the
- * engine without touching the shipped annotations module.
+ * Generated lambdas, nested classes, custom getters, complex initializers, and other non-direct
+ * bytecode shapes require separate coverage. The annotation descriptors and decoder are injectable
+ * so tests and build integrations can select their runtime without modifying the annotations module.
  */
 public class StringVeilTransformer(
     private val cipher: StringCipher = LayeredStringCipher(),
@@ -64,7 +68,7 @@ public class StringVeilTransformer(
         return Result(writer.toByteArray(), outcome.errors, outcome.warnings)
     }
 
-    /** Mutates [node] in place. Shared by the byte-array API and the Android instrumentation path. */
+    /** Mutates [node] in place. Shared by the byte-array API and build integrations. */
     public fun transformNode(node: ClassNode): Outcome {
         val errors = mutableListOf<String>()
         val warnings = mutableListOf<String>()

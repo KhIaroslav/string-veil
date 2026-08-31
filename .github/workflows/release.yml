@@ -68,6 +68,26 @@ jobs:
             fi
           done
 
+      - name: Verify signing key matches its passphrase
+        shell: bash
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          # Presence is not validity: a SIGNING_KEY that does not decrypt with SIGNING_PASSWORD
+          # only surfaces at the Central publish step, after a full multi-minute build
+          # ("Could not read PGP secret key: checksum mismatch"). Reproduce that exact failure
+          # here in seconds by importing the key into a throwaway keyring and making one detached
+          # signature with the passphrase, so a mismatched key/passphrase fails fast.
+          export GNUPGHOME="$(mktemp -d)"
+          echo "allow-loopback-pinentry" > "$GNUPGHOME/gpg-agent.conf"
+          gpgconf --kill gpg-agent >/dev/null 2>&1 || true
+          printf '%s\n' "$SIGNING_KEY" | gpg --batch --import
+          printf 'string-veil signing self-test' \
+            | gpg --batch --yes --pinentry-mode loopback --passphrase "$SIGNING_PASSWORD" \
+                  --armor --detach-sign -o /dev/null
+          echo "Signing key decrypts with its passphrase."
+
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
@@ -124,8 +144,7 @@ jobs:
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
         run: ./gradlew :gradle-plugin:publishPlugins --stacktrace --no-daemon
 
-      # Signed SLSA provenance for the published binaries. Because the archives are reproducible,
-      # these digests match what a consumer can rebuild and re-hash. Verify with:
+      # Signed build provenance for the binary archives produced by this release job. Verify with:
       #   gh attestation verify <artifact> --repo KhIaroslav/string-veil
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
@@ -137,7 +156,15 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        shell: bash
+        run: |
+          # A hyphen in the tag marks a SemVer pre-release identifier (e.g. v1.2.3-alpha01,
+          # -beta, -rc1). Flag those as GitHub pre-releases so they are not shown as "Latest".
+          prerelease=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag "${prerelease[@]}"
 
       - name: Attach SBOM to release
         env:

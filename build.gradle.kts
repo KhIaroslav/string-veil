@@ -18,9 +18,8 @@ allprojects {
 }
 
 subprojects {
-    // Reproducible archives: strip embedded file timestamps and pin entry order so every published
-    // jar/zip is byte-for-byte identical across builds and machines, which makes the artifacts
-    // independently verifiable against the build provenance.
+    // Make archive metadata reproducible by omitting file timestamps and fixing entry order.
+    // Cross-machine reproducibility, especially for native binaries, is verified separately.
     tasks.withType<AbstractArchiveTask>().configureEach {
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true
@@ -41,7 +40,9 @@ subprojects {
         publishingExtension.publications.withType<MavenPublication>().configureEach {
             pom {
                 name.set("String Veil ${artifactId.replace('-', ' ').replaceFirstChar(Char::uppercase)}")
-                description.set("Selective Kotlin and Android string obfuscation")
+                description.set(
+                    "Selective build-time string obfuscation for Kotlin, Java, JVM, and Android",
+                )
                 url.set("https://github.com/KhIaroslav/string-veil")
                 inceptionYear.set("2026")
                 licenses {

@@ -4,7 +4,7 @@ import org.gradle.api.provider.Property
 
 /** Gradle configuration for String Veil. */
 public abstract class StringVeilExtension {
-    /** Enables String Veil for supported Kotlin compilations. */
+    /** Enables String Veil for supported JVM and Android projects. */
     public abstract val enabled: Property<Boolean>
 
     /**

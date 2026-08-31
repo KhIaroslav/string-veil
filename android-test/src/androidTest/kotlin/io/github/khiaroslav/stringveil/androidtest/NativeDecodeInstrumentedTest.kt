@@ -8,8 +8,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Runs on a real Android runtime (an emulator in CI). This is the one thing the host-only
- * differential test cannot prove: that the JNI shared library actually loads for the device's ABI
+ * Runs on a real Android runtime (an emulator in CI). This covers what the host-only differential
+ * test cannot: whether the JNI shared library loads for the device's ABI
  * and decodes correctly, rather than silently degrading to the JVM fallback.
  */
 @RunWith(AndroidJUnit4::class)
@@ -20,7 +20,7 @@ class NativeDecodeInstrumentedTest {
             "native library did not load for this ABI — @Obfuscate would fall back to the JVM decoder",
             NativeStringDecoder.isNativeAvailable(),
         )
-        // The literal was compiled to a NativeStringDecoder.decode(...) call; assert it round-trips.
+        // The literal was rewritten to a NativeStringDecoder.decode(...) call; assert it round-trips.
         assertEquals(
             "https://internal.example.com/native-secret",
             ObfuscatedSecrets.endpoint,

@@ -2,7 +2,7 @@ package io.github.khiaroslav.stringveil.format
 
 /**
  * The single source of truth for String Veil's container-format constants and mixing primitives,
- * shared byte-for-byte between the build-time cipher (`compiler-plugin`) and the JVM decoder
+ * shared byte-for-byte between the build-time cipher (`bytecode`) and the JVM decoder
  * (`runtime`). The native C++ decoder mirrors these definitions by hand; the differential test in
  * `:native-differential` guards that mirror.
  *

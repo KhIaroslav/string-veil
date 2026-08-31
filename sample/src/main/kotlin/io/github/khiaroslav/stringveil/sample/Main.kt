@@ -4,25 +4,25 @@ import io.github.khiaroslav.stringveil.annotations.DoNotObfuscate
 import io.github.khiaroslav.stringveil.annotations.Obfuscate
 
 /**
- * Minimal demonstration of String Veil. Every string marked for obfuscation is replaced in the
- * compiled bytecode with a call to the decoder over a randomized container — the plaintext never
- * appears in the `.class` file — yet it decodes to the original value at runtime.
+ * Minimal demonstration of supported String Veil declaration shapes. The selected direct literals
+ * are replaced in the transformed bytecode with decoder calls over randomized containers and still
+ * produce their original values at runtime.
  *
  * Inspect it yourself after `./gradlew -p sample run`:
  *
  *   strings sample/build/classes/kotlin/main/io/github/khiaroslav/stringveil/sample/MainKt.class \
- *     | grep internal   # prints nothing: the secrets are gone
+ *     | grep internal   # prints nothing: the selected plaintexts are absent
  */
 
 // @Obfuscate on a top-level val hides its literal.
 @Obfuscate
 private val apiBaseUrl = "https://internal.example.com/api"
 
-// @Obfuscate on a function hides every string literal in its body.
+// @Obfuscate on a function selects direct string literals in that bytecode method.
 @Obfuscate
 private fun telemetryEndpoint(): String = "https://telemetry.internal.example.com/v3/ingest"
 
-// @Obfuscate on a class hides all its fields; @DoNotObfuscate opts a single one back out.
+// @Obfuscate on a class selects supported direct literals; @DoNotObfuscate opts one back out.
 @Obfuscate
 private class BuildInfo {
     val featureFlag = "enable-experimental-checkout" // hidden

@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Keep GitHub Actions up to date (and enable moving to SHA-pinned actions later).
+  # Keep GitHub Actions up to date; workflow references remain pinned to reviewed commit SHAs.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -20,8 +20,3 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "build"
-    # Kotlin is intentionally pinned: the compiler plugin binds to internal K2 IR APIs, so Kotlin
-    # upgrades must be validated by a human, not merged automatically.
-    ignore:
-      - dependency-name: "org.jetbrains.kotlin:*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]

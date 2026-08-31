@@ -21,7 +21,7 @@ body:
       label: Steps to reproduce
       description: A minimal reproduction (ideally a small annotated snippet or a repo link).
       placeholder: |
-        1. Annotate `val x = "..."` with `@Obfuscate(...)`
+        1. Annotate `val x = "..."` with `@Obfuscate`
         2. Build with `./gradlew ...`
         3. Observe ...
     validations:
@@ -37,7 +37,7 @@ body:
     id: kotlin-version
     attributes:
       label: Kotlin version
-      placeholder: "2.3.21"
+      placeholder: "1.9.24"
     validations:
       required: true
   - type: input
@@ -53,16 +53,18 @@ body:
       label: Target platform
       options:
         - Kotlin/JVM
+        - Java/JVM
         - Kotlin/Android
-        - Both
+        - Java/Android
+        - Multiple platforms
     validations:
       required: true
   - type: input
     id: android-details
     attributes:
       label: Android details (if applicable)
-      description: AGP version, minSdk, ABI, and decoder engine (AUTO / JVM / NATIVE).
-      placeholder: "AGP 8.x, minSdk 21, arm64-v8a, engine AUTO"
+      description: AGP version, compileSdk, minSdk, build type, and ABI.
+      placeholder: "AGP 8.7.3, compileSdk 34, minSdk 21, release, arm64-v8a"
   - type: textarea
     id: logs
     attributes:

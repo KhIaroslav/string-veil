@@ -74,6 +74,46 @@ class StringVeilKotlinTransformTest {
         }
     }
 
+    @Test
+    fun `obfuscates an instance property annotated directly, initialized in the constructor`() {
+        val root = createTempDirectory("kotlin-instance-prop").toFile()
+        try {
+            val source = root.resolve("Config.kt").apply {
+                writeText(
+                    """
+                    import io.github.khiaroslav.stringveil.annotations.Obfuscate
+
+                    class Config {
+                        @Obfuscate
+                        val instanceSecret = "instance-secret-value"
+                        val instanceVisible = "instance-visible-value"
+                    }
+                    """.trimIndent(),
+                )
+            }
+            val classes = compileKotlin(root, source)
+            transformAll(classes)
+
+            val config = classes.resolve("Config.class").readBytes()
+            assertFalse(config.containsUtf8("instance-secret-value"), "@Obfuscate instance property leaked")
+            assertTrue(
+                config.containsUtf8("instance-visible-value"),
+                "unannotated instance property wrongly hidden",
+            )
+
+            URLClassLoader(arrayOf(classes.toURI().toURL()), javaClass.classLoader).use { loader ->
+                val configClass = loader.loadClass("Config")
+                val instance = configClass.getDeclaredConstructor().newInstance()
+                assertEquals(
+                    "instance-secret-value",
+                    configClass.getMethod("getInstanceSecret").invoke(instance),
+                )
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun transformAll(classesDir: File) {
         val transformer = StringVeilTransformer()
         classesDir.walkTopDown().filter { it.isFile && it.extension == "class" }.forEach { file ->

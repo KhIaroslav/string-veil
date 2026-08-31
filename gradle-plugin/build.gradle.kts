@@ -1,5 +1,3 @@
-import org.gradle.plugin.compatibility.compatibility
-
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.plugin.publish)
@@ -17,7 +15,7 @@ dependencies {
     // The transform engine runs inside the consumer build, so it (and its ASM/encoder/runtime deps)
     // must be on the plugin's runtime classpath.
     implementation(project(":bytecode"))
-    // The Android instrumentation bridge uses the ASM tree API directly.
+    // The bytecode engine uses ASM and its tree API while running in the consumer build.
     implementation(libs.asm)
     implementation(libs.asm.tree)
 
@@ -40,13 +38,8 @@ gradlePlugin {
             implementationClass =
                 "io.github.khiaroslav.stringveil.gradle.StringVeilGradlePlugin"
             displayName = "String Veil"
-            description = "Selective Kotlin string obfuscation"
-            tags.set(listOf("kotlin", "android", "obfuscation", "security"))
-            compatibility {
-                features {
-                    configurationCache = true
-                }
-            }
+            description = "Selective build-time string obfuscation for Kotlin, Java, JVM, and Android"
+            tags.set(listOf("kotlin", "java", "android", "obfuscation", "bytecode"))
         }
     }
 }
