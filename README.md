@@ -9,7 +9,7 @@ annotated literals in compiled JVM bytecode and restores them at runtime.
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.khiaroslav.stringveil/gradle-plugin.svg?label=Maven%20Central)](https://central.sonatype.com/namespace/io.github.khiaroslav.stringveil)
 [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/io.github.khiaroslav.string-veil)](https://plugins.gradle.org/plugin/io.github.khiaroslav.string-veil)
 
-> **Status: early development (`0.1.0-alpha01`, first public pre-release).** The container format and
+> **Status: early development (`0.1.0-alpha02` pre-release).** The container format and
 > public API may change between pre-release versions.
 
 ## Install
@@ -37,7 +37,7 @@ Apply String Veil in an application or library module:
 
 ```kotlin
 plugins {
-    id("io.github.khiaroslav.string-veil") version "0.1.0-alpha01"
+    id("io.github.khiaroslav.string-veil") version "0.1.0-alpha02"
 }
 ```
 
