@@ -30,7 +30,7 @@ body:
     id: string-veil-version
     attributes:
       label: String Veil version
-      placeholder: "0.1.0-alpha01"
+      placeholder: "0.1.0-alpha02"
     validations:
       required: true
   - type: input

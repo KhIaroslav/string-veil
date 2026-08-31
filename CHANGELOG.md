@@ -7,6 +7,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0-alpha02] — 2026-08-31
+
 ### Changed
 
 - Android project classes are transformed through AGP's `ScopedArtifacts` classes pipeline, producing
@@ -74,5 +76,6 @@ versions.
   lambdas, nested classes, interpolated-template recipes, resources, assets, and `BuildConfig` are
   not all covered. See the README for the exact current limitations.
 
-[Unreleased]: https://github.com/KhIaroslav/string-veil/compare/v0.1.0-alpha01...HEAD
+[Unreleased]: https://github.com/KhIaroslav/string-veil/compare/v0.1.0-alpha02...HEAD
+[0.1.0-alpha02]: https://github.com/KhIaroslav/string-veil/compare/v0.1.0-alpha01...v0.1.0-alpha02
 [0.1.0-alpha01]: https://github.com/KhIaroslav/string-veil/releases/tag/v0.1.0-alpha01
