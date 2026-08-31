@@ -44,6 +44,7 @@ public class StringVeilTransformer(
     private val obfuscateDescriptor: String = OBFUSCATE_DESCRIPTOR,
     private val doNotObfuscateDescriptor: String = DO_NOT_OBFUSCATE_DESCRIPTOR,
     private val decoderInternalName: String = STRING_DECODER,
+    private val markerInternalName: String = MARKER,
     private val failOnSecretLike: Boolean = false,
 ) {
     public data class Result(
@@ -79,11 +80,20 @@ public class StringVeilTransformer(
         // `get<Name>$annotations()` method that carries them. Fold those back onto the property name.
         val propertyObfuscated = HashSet<String>()
         val propertyExcluded = HashSet<String>()
+        // A computed property (custom getter, no backing field) keeps its literal in the accessor
+        // method body rather than a field initializer, so record the accessor to obfuscate directly.
+        // `get<Name>$annotations()` mirrors the accessor `get<Name>()` exactly, so drop the suffix.
+        val obfuscatedAccessors = HashSet<String>()
         for (method in node.methods) {
             val property = kotlinPropertyName(method.name) ?: continue
             val annotations = method.visibleAnnotations to method.invisibleAnnotations
-            if (annotations.has(obfuscateDescriptor)) propertyObfuscated += property
-            if (annotations.has(doNotObfuscateDescriptor)) propertyExcluded += property
+            when {
+                annotations.has(doNotObfuscateDescriptor) -> propertyExcluded += property
+                annotations.has(obfuscateDescriptor) -> {
+                    propertyObfuscated += property
+                    obfuscatedAccessors += method.name.removeSuffix("\$annotations")
+                }
+            }
         }
 
         val obfuscatedFields = HashSet<String>()
@@ -104,22 +114,54 @@ public class StringVeilTransformer(
 
         var changed = false
         var counter = 0
+
+        // Replaces a string literal with the decode over its randomized container, reporting
+        // secret-looking values. Shared by the annotation-scope path and the `obfuscate(...)` marker.
+        fun encodeLiteral(value: String): InsnList {
+            SecretLiteralHeuristics.detect(value)?.let { reason ->
+                val message = "'${node.name.toDotted()}' obfuscates a literal that looks like " +
+                    "$reason. String Veil is obfuscation, not encryption; move real secrets " +
+                    "server-side or inject them at runtime (see SECURITY.md)."
+                if (failOnSecretLike) errors += message else warnings += message
+            }
+            val container = cipher.encrypt(
+                value.toByteArray(Charsets.UTF_8),
+                EncryptionContext(node.name, counter++),
+                ProtectionConfig(),
+            ).container
+            return decodeInstructions(container)
+        }
+
         for (method in node.methods) {
             val methodWide = when (method.name) {
                 "<init>", "<clinit>" -> classObfuscated
                 else -> {
                     val annotations = method.visibleAnnotations to method.invisibleAnnotations
                     !annotations.has(doNotObfuscateDescriptor) &&
-                        (annotations.has(obfuscateDescriptor) || classObfuscated)
+                        (annotations.has(obfuscateDescriptor) ||
+                            method.name in obfuscatedAccessors ||
+                            classObfuscated)
                 }
             }
 
             for (insn in method.instructions.toArray()) {
                 if (insn !is LdcInsnNode) continue
                 val value = insn.cst as? String ?: continue
-                if (value.isEmpty()) continue
-
                 val next = insn.nextRealInsn()
+
+                // `obfuscate("literal")` — a self-contained opt-in, independent of annotation scope.
+                // Replace the literal and drop the marker call; an empty literal keeps only the `LDC`.
+                if (next is MethodInsnNode && next.isMarkerCall()) {
+                    if (value.isNotEmpty()) {
+                        method.instructions.insertBefore(insn, encodeLiteral(value))
+                        method.instructions.remove(insn)
+                    }
+                    method.instructions.remove(next)
+                    changed = true
+                    continue
+                }
+
+                if (value.isEmpty()) continue
                 val hide = if (
                     next is FieldInsnNode &&
                     (next.opcode == Opcodes.PUTFIELD || next.opcode == Opcodes.PUTSTATIC)
@@ -130,21 +172,17 @@ public class StringVeilTransformer(
                 }
                 if (!hide) continue
 
-                SecretLiteralHeuristics.detect(value)?.let { reason ->
-                    val message = "'${node.name.toDotted()}' obfuscates a literal that looks like " +
-                        "$reason. String Veil is obfuscation, not encryption; move real secrets " +
-                        "server-side or inject them at runtime (see SECURITY.md)."
-                    if (failOnSecretLike) errors += message else warnings += message
-                }
-
-                val container = cipher.encrypt(
-                    value.toByteArray(Charsets.UTF_8),
-                    EncryptionContext(node.name, counter++),
-                    ProtectionConfig(),
-                ).container
-                method.instructions.insertBefore(insn, decodeInstructions(container))
+                method.instructions.insertBefore(insn, encodeLiteral(value))
                 method.instructions.remove(insn)
                 changed = true
+            }
+
+            // Fail-closed: any marker call still present was not applied to a string literal.
+            for (insn in method.instructions.toArray()) {
+                if (insn is MethodInsnNode && insn.isMarkerCall()) {
+                    warnings += "obfuscate() in '${node.name.toDotted()}' was not called on a string " +
+                        "literal, so its value is not obfuscated. Pass a direct \"literal\"."
+                }
             }
         }
 
@@ -173,9 +211,18 @@ public class StringVeilTransformer(
         return list
     }
 
+    private fun MethodInsnNode.isMarkerCall(): Boolean =
+        opcode == Opcodes.INVOKESTATIC &&
+            owner == markerInternalName &&
+            name == MARKER_METHOD &&
+            desc == MARKER_DESC
+
     private companion object {
         const val STRING_TYPE = "Ljava/lang/String;"
         const val STRING_DECODER = "io/github/khiaroslav/stringveil/runtime/StringDecoder"
+        const val MARKER = "io/github/khiaroslav/stringveil/StringVeil"
+        const val MARKER_METHOD = "obfuscate"
+        const val MARKER_DESC = "(Ljava/lang/String;)Ljava/lang/String;"
         const val OBFUSCATE_DESCRIPTOR = "Lio/github/khiaroslav/stringveil/annotations/Obfuscate;"
         const val DO_NOT_OBFUSCATE_DESCRIPTOR =
             "Lio/github/khiaroslav/stringveil/annotations/DoNotObfuscate;"

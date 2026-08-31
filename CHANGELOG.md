@@ -7,6 +7,21 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- An `obfuscate("...")` marker function (`io.github.khiaroslav.stringveil.obfuscate`) that protects an
+  individual string literal at its exact call site — including forms the declaration annotation cannot
+  reach: `by lazy { }` / delegated properties, `companion object` / static initializers, custom
+  getters, interpolation fragments, and sub-expressions. Only a direct string literal is supported;
+  the build warns (fail-closed) when the marker is applied to a non-literal. When the plugin is not
+  applied it is an identity function.
+
+### Fixed
+
+- Property-level `@Obfuscate` on a computed property (custom getter, no backing field) now obfuscates
+  the literal in the getter body; previously the annotation folded onto the (absent) backing field
+  only and left the getter untouched.
+
 ## [0.1.0-alpha02] — 2026-08-31
 
 ### Changed

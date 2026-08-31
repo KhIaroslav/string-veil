@@ -114,6 +114,117 @@ class StringVeilKotlinTransformTest {
         }
     }
 
+    @Test
+    fun `obfuscates a computed property with a custom getter`() {
+        val root = createTempDirectory("kotlin-custom-getter").toFile()
+        try {
+            val source = root.resolve("Computed.kt").apply {
+                writeText(
+                    """
+                    import io.github.khiaroslav.stringveil.annotations.Obfuscate
+
+                    class Computed {
+                        @Obfuscate
+                        val secret: String
+                            get() = "computed-secret-value"
+                        val plain: String
+                            get() = "computed-plain-value"
+                    }
+                    """.trimIndent(),
+                )
+            }
+            val classes = compileKotlin(root, source)
+            transformAll(classes)
+
+            val computed = classes.resolve("Computed.class").readBytes()
+            assertFalse(computed.containsUtf8("computed-secret-value"), "@Obfuscate custom getter leaked")
+            assertTrue(
+                computed.containsUtf8("computed-plain-value"),
+                "unannotated custom getter wrongly hidden",
+            )
+
+            URLClassLoader(arrayOf(classes.toURI().toURL()), javaClass.classLoader).use { loader ->
+                val computedClass = loader.loadClass("Computed")
+                val instance = computedClass.getDeclaredConstructor().newInstance()
+                assertEquals("computed-secret-value", computedClass.getMethod("getSecret").invoke(instance))
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `obfuscate() marker hides literals in lazy, companion, and getter forms`() {
+        val root = createTempDirectory("marker").toFile()
+        try {
+            val source = root.resolve("MarkerFixture.kt").apply {
+                writeText(
+                    """
+                    import io.github.khiaroslav.stringveil.obfuscate
+
+                    class MarkerFixture {
+                        val lazySecret: String by lazy { obfuscate("lazy-marker-value") }
+                        val computed: String
+                            get() = obfuscate("getter-marker-value")
+
+                        companion object {
+                            val staticSecret = obfuscate("companion-marker-value")
+                        }
+                    }
+                    """.trimIndent(),
+                )
+            }
+            val classes = compileKotlin(root, source)
+            transformAll(classes)
+
+            val allClassBytes = classes.walkTopDown()
+                .filter { it.isFile && it.extension == "class" }
+                .map { it.readBytes() }
+                .toList()
+            listOf("lazy-marker-value", "getter-marker-value", "companion-marker-value").forEach { secret ->
+                assertFalse(allClassBytes.any { it.containsUtf8(secret) }, "marker leaked: $secret")
+            }
+
+            URLClassLoader(arrayOf(classes.toURI().toURL()), javaClass.classLoader).use { loader ->
+                val fixtureClass = loader.loadClass("MarkerFixture")
+                val instance = fixtureClass.getDeclaredConstructor().newInstance()
+                assertEquals("lazy-marker-value", fixtureClass.getMethod("getLazySecret").invoke(instance))
+                assertEquals("getter-marker-value", fixtureClass.getMethod("getComputed").invoke(instance))
+                val companion = fixtureClass.getField("Companion").get(null)
+                assertEquals(
+                    "companion-marker-value",
+                    companion.javaClass.getMethod("getStaticSecret").invoke(companion),
+                )
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `obfuscate() on a non-literal is reported and left unobfuscated`() {
+        val root = createTempDirectory("marker-nonliteral").toFile()
+        try {
+            val source = root.resolve("NonLiteral.kt").apply {
+                writeText(
+                    """
+                    import io.github.khiaroslav.stringveil.obfuscate
+
+                    fun wrap(secret: String): String = obfuscate(secret)
+                    """.trimIndent(),
+                )
+            }
+            val classes = compileKotlin(root, source)
+            val result = StringVeilTransformer().transform(classes.resolve("NonLiteralKt.class").readBytes())
+            assertTrue(
+                result.warnings.any { it.contains("obfuscate()") },
+                "expected a fail-closed warning for a non-literal marker: ${result.warnings}",
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun transformAll(classesDir: File) {
         val transformer = StringVeilTransformer()
         classesDir.walkTopDown().filter { it.isFile && it.extension == "class" }.forEach { file ->
