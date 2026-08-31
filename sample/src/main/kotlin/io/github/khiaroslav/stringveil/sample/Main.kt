@@ -2,6 +2,7 @@ package io.github.khiaroslav.stringveil.sample
 
 import io.github.khiaroslav.stringveil.annotations.DoNotObfuscate
 import io.github.khiaroslav.stringveil.annotations.Obfuscate
+import io.github.khiaroslav.stringveil.obfuscate
 
 /**
  * Minimal demonstration of supported String Veil declaration shapes. The selected direct literals
@@ -31,6 +32,10 @@ private class BuildInfo {
     val label = "String Veil sample" // kept as plaintext on purpose
 }
 
+// obfuscate(...) marker — protects a literal the declaration annotation cannot reach (here, inside a
+// lazy delegate). It needs no annotation and is replaced at its exact call site.
+private val lazyEndpoint: String by lazy { obfuscate("https://config.internal.example.com/flags") }
+
 // No annotation → left untouched.
 private val plainLabel = "public-label"
 
@@ -41,6 +46,7 @@ fun main() {
     println("  apiBaseUrl        = $apiBaseUrl")
     println("  telemetryEndpoint = ${telemetryEndpoint()}")
     println("  featureFlag       = ${info.featureFlag}")
+    println("  lazyEndpoint      = $lazyEndpoint")
     println()
     println("Left as plaintext on purpose:")
     println("  label             = ${info.label}")

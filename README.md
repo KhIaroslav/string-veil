@@ -77,6 +77,28 @@ class BuildInfo {
 }
 ```
 
+For individual literals in forms a declaration annotation cannot reach — `by lazy { }` delegates,
+`companion object` / static initializers, custom getters, interpolation fragments, and
+sub-expressions — wrap the literal with the `obfuscate(...)` marker instead:
+
+```kotlin
+import io.github.khiaroslav.stringveil.obfuscate
+
+class Config {
+    val endpoint: String by lazy { obfuscate("https://internal.example.com/api") }
+
+    companion object {
+        val token = obfuscate("internal-token")
+    }
+}
+```
+
+The marker is a per-literal opt-in and needs no annotation. Only a direct string literal is
+supported; `obfuscate(someVariable)` cannot be protected and is reported by the build. When the
+plugin is not applied, `obfuscate` is an identity function, so the code still compiles and runs. Use
+the annotation for whole declarations and the marker for individual awkward literals — do not combine
+them on the same literal.
+
 The annotation currently uses one default randomized, three-layer pipeline. The declared
 `method`, `methods`, `repetitions`, and `engine` arguments are reserved for compatibility with the
 earlier compiler-plugin prototype and are **not read by the bytecode transform**. Do not rely on them
@@ -121,12 +143,15 @@ process.
 
 - **`const val` is not supported.** Its value is inlined at use sites. Selecting a `ConstantValue`
   field produces a build error.
-- **Only direct string constants in supported declaration bytecode are transformed.** Complex
-  property initializers such as `if`/`when`, collection initializers, delegated properties, custom
-  getters, compiler-generated lambdas, and nested or anonymous classes may fall outside the selected
-  declaration. Do not assume those forms are protected without inspecting the final output.
-- **Interpolated template recipes are not transformed.** Some template fragments compile to
-  `invokedynamic` metadata rather than `LDC` string instructions.
+- **The annotation reaches only direct string constants in the annotated declaration's own
+  bytecode** — fields, initializers, method bodies, and custom getters. Literals buried in a
+  `by lazy { }` / delegated property, a `companion object` / static initializer, an `if`/`when` or
+  collection initializer, or a nested/anonymous class fall outside the selected declaration; wrap
+  those with the `obfuscate(...)` marker instead (see [Use](#use)). A bare `@Obfuscate` does not
+  protect them, and the build warns when a marker is applied to a non-literal.
+- **Interpolated template fragments are not covered by the annotation.** Some fragments compile to
+  `invokedynamic` metadata rather than `LDC` string instructions; wrap the sensitive fragment with
+  `obfuscate("...")` to protect it.
 - **Resources are outside the transform.** Android resources, `AndroidManifest.xml`, assets,
   `BuildConfig`, and strings in dependencies are not processed.
 - **String identity can change.** A decoded value is a new `String`, so Java reference equality and
