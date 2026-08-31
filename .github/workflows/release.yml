@@ -116,7 +116,11 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew publishAggregationToCentralPortal --stacktrace --no-daemon
 
+      # Best-effort: while a brand-new plugin id is held for first-time approval, the Plugin Portal
+      # rejects new versions ("Failed to post to server"). The plugin also resolves from Maven Central
+      # via its marker, so a Portal failure must not fail the release or skip the steps below.
       - name: Publish Gradle plugin
+        continue-on-error: true
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
