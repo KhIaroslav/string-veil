@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.3.21"
+kotlin = "1.9.24"
 nmcp = "1.6.1"
 plugin-publish = "2.1.1"
 dokka = "2.0.0"

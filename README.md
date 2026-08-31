@@ -180,7 +180,7 @@ claimed for every past or future compiler.
 | Component | Currently verified |
 |---|---|
 | Gradle | 8.14.2 |
-| Kotlin | 2.3.21 |
+| Kotlin | 1.9.24 |
 | JDK toolchain | 17 |
 | Android Gradle Plugin | 8.7.3 |
 | Android compile SDK | 34 |

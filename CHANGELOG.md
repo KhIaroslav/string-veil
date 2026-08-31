@@ -20,6 +20,18 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   integration still mutates the `classes` output in a task action.
 - The release workflow validates the signing key/passphrase pair before the full build and marks
   SemVer pre-release tags as GitHub pre-releases.
+- The published artifacts are built with Kotlin 1.9.24 instead of 2.3.21, lowering the
+  `kotlin-stdlib` version consumers inherit through the POM.
+
+### Fixed
+
+- Obfuscated string literals no longer remain in the compiled Android class files or a published
+  AAR. AGP's ASM instrumentation writes through a reader-backed `ClassWriter` that copies the
+  original constant pool wholesale, so removing the `LDC` left the plaintext orphaned but still
+  present in the pool; the `ScopedArtifacts` classes transform re-serializes through a fresh writer
+  that rebuilds the pool from live references. (A dexed APK was already clean because D8 rebuilds the
+  string pool, but a published AAR was not.) A build-time check fails the Android build if the
+  literal is ever found in the packaged AAR.
 
 ## [0.1.0-alpha01] — 2026-08-28
 

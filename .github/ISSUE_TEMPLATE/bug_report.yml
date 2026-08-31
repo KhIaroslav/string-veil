@@ -37,7 +37,7 @@ body:
     id: kotlin-version
     attributes:
       label: Kotlin version
-      placeholder: "2.3.21"
+      placeholder: "1.9.24"
     validations:
       required: true
   - type: input
