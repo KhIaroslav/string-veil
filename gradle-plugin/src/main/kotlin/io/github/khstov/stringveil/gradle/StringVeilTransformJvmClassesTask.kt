@@ -4,6 +4,7 @@ import io.github.khstov.stringveil.bytecode.StringVeilTransformer
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -36,12 +37,24 @@ public abstract class StringVeilTransformJvmClassesTask : DefaultTask() {
     @get:Optional
     public abstract val seed: Property<Long>
 
+    @get:Input
+    public abstract val includePackages: ListProperty<String>
+
+    @get:Input
+    public abstract val excludePackages: ListProperty<String>
+
+    @get:Input
+    public abstract val minStringLength: Property<Int>
+
     @TaskAction
     public fun transform() {
         if (!obfuscationEnabled.get()) return
         val transformer = StringVeilTransformer(
             seed = seed.orNull,
             failOnSecretLike = failOnSecretLike.get(),
+            includePackages = includePackages.get(),
+            excludePackages = excludePackages.get(),
+            minStringLength = minStringLength.get(),
         )
         val errors = mutableListOf<String>()
         classesDirs.files.filter { it.isDirectory }.forEach { root ->

@@ -47,6 +47,9 @@ public class StringVeilGradlePlugin : Plugin<Project> {
             task.obfuscationEnabled.set(extension.enabled)
             task.failOnSecretLike.set(extension.failOnSecretLikeLiterals)
             task.seed.set(extension.seed)
+            task.includePackages.set(extension.includePackages)
+            task.excludePackages.set(extension.excludePackages)
+            task.minStringLength.set(extension.minStringLength)
         }
         // Everything that consumes `classes` (jar, test, run) then sees the transformed output.
         target.tasks.named("classes").configure { it.dependsOn(obfuscate) }

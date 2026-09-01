@@ -1,5 +1,6 @@
 package io.github.khstov.stringveil.gradle
 
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 
 /** Gradle configuration for String Veil. */
@@ -21,8 +22,33 @@ public abstract class StringVeilExtension {
      */
     public abstract val seed: Property<Long>
 
+    /**
+     * Only transform classes whose package matches one of these (exact or a parent prefix, e.g.
+     * `com.example` covers `com.example.api`). Empty means every package is eligible.
+     */
+    public abstract val includePackages: ListProperty<String>
+
+    /**
+     * Never transform classes whose package matches one of these (exact or a parent prefix). Takes
+     * precedence over [includePackages].
+     */
+    public abstract val excludePackages: ListProperty<String>
+
+    /**
+     * Skip annotation-scoped literals shorter than this. An explicit `obfuscate("...")` marker always
+     * obfuscates regardless of length. Defaults to 0 (no minimum).
+     */
+    public abstract val minStringLength: Property<Int>
+
+    /**
+     * Android only: obfuscate only these build variants, by name (e.g. `release`). Empty means every
+     * variant.
+     */
+    public abstract val includeVariants: ListProperty<String>
+
     init {
         enabled.convention(true)
         failOnSecretLikeLiterals.convention(false)
+        minStringLength.convention(0)
     }
 }

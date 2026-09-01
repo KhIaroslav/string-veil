@@ -103,6 +103,84 @@ class StringVeilTransformerTest {
         }
     }
 
+    @Test
+    fun `excludePackages leaves a matching class untouched`() {
+        val root = createTempDirectory("bytecode-exclude").toFile()
+        try {
+            val classes = compile(
+                root,
+                "veil/Obf.java" to ANNOTATION_OBF,
+                "veil/Skip.java" to ANNOTATION_SKIP,
+                "sample/Fixture.java" to FIXTURE,
+            )
+            val bytes = classes.resolve("sample/Fixture.class").readBytes()
+            val result = StringVeilTransformer(
+                obfuscateDescriptor = "Lveil/Obf;",
+                doNotObfuscateDescriptor = "Lveil/Skip;",
+                excludePackages = listOf("sample"),
+            ).transform(bytes)
+            assertTrue(result.bytes.containsUtf8("class-secret"), "excluded package must not be transformed")
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `includePackages limits transformation to matching packages`() {
+        val root = createTempDirectory("bytecode-include").toFile()
+        try {
+            val classes = compile(
+                root,
+                "veil/Obf.java" to ANNOTATION_OBF,
+                "veil/Skip.java" to ANNOTATION_SKIP,
+                "sample/Fixture.java" to FIXTURE,
+            )
+            val bytes = classes.resolve("sample/Fixture.class").readBytes()
+            val outside = StringVeilTransformer(
+                obfuscateDescriptor = "Lveil/Obf;",
+                doNotObfuscateDescriptor = "Lveil/Skip;",
+                includePackages = listOf("other"),
+            ).transform(bytes)
+            assertTrue(outside.bytes.containsUtf8("class-secret"), "package outside include list must be skipped")
+            val inside = StringVeilTransformer(
+                obfuscateDescriptor = "Lveil/Obf;",
+                doNotObfuscateDescriptor = "Lveil/Skip;",
+                includePackages = listOf("sample"),
+            ).transform(bytes)
+            assertFalse(inside.bytes.containsUtf8("class-secret"), "package in include list must be transformed")
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `minStringLength skips shorter annotation-scoped literals`() {
+        val root = createTempDirectory("bytecode-minlen").toFile()
+        try {
+            val classes = compile(
+                root,
+                "veil/Obf.java" to ANNOTATION_OBF,
+                "veil/Skip.java" to ANNOTATION_SKIP,
+                "sample/Fixture.java" to FIXTURE,
+            )
+            val bytes = classes.resolve("sample/Fixture.class").readBytes()
+            val obfuscated = StringVeilTransformer(
+                obfuscateDescriptor = "Lveil/Obf;",
+                doNotObfuscateDescriptor = "Lveil/Skip;",
+                minStringLength = 0,
+            ).transform(bytes)
+            assertFalse(obfuscated.bytes.containsUtf8("class-secret"), "baseline: the literal is obfuscated")
+            val skipped = StringVeilTransformer(
+                obfuscateDescriptor = "Lveil/Obf;",
+                doNotObfuscateDescriptor = "Lveil/Skip;",
+                minStringLength = 20,
+            ).transform(bytes)
+            assertTrue(skipped.bytes.containsUtf8("class-secret"), "a 12-char literal stays under minStringLength 20")
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun compile(root: File, vararg sources: Pair<String, String>): File {
         val sourceFiles = sources.map { (path, content) ->
             root.resolve(path).apply { parentFile.mkdirs(); writeText(content) }

@@ -49,12 +49,24 @@ public abstract class StringVeilTransformClassesTask : DefaultTask() {
     @get:Optional
     public abstract val seed: Property<Long>
 
+    @get:Input
+    public abstract val includePackages: ListProperty<String>
+
+    @get:Input
+    public abstract val excludePackages: ListProperty<String>
+
+    @get:Input
+    public abstract val minStringLength: Property<Int>
+
     @TaskAction
     public fun transform() {
         val transformer = StringVeilTransformer(
             seed = seed.orNull,
             decoderInternalName = NATIVE_DECODER,
             failOnSecretLike = failOnSecretLike.get(),
+            includePackages = includePackages.get(),
+            excludePackages = excludePackages.get(),
+            minStringLength = minStringLength.get(),
         )
         val errors = mutableListOf<String>()
         val written = HashSet<String>()
