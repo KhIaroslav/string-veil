@@ -146,6 +146,7 @@ Consumers of the published Android AAR do not need the NDK.
 ## Project documentation
 
 - [Sample project](sample) — runnable JVM example.
+- [Benchmarks](BENCHMARKS.md) — container size, encode, and decode cost per protection config.
 - [Contributing](CONTRIBUTING.md) — source build, tests, modules, and release process.
 - [Changelog](CHANGELOG.md) — user-visible changes and migration notes.
 - [Security policy](SECURITY.md) — threat model, supported versions, and private reporting.
