@@ -48,6 +48,9 @@ public class StringVeilTransformer(
     private val decoderInternalName: String = STRING_DECODER,
     private val markerInternalName: String = MARKER,
     private val failOnSecretLike: Boolean = false,
+    private val includePackages: List<String> = emptyList(),
+    private val excludePackages: List<String> = emptyList(),
+    private val minStringLength: Int = 0,
 ) {
     public data class Result(
         val bytes: ByteArray,
@@ -75,6 +78,8 @@ public class StringVeilTransformer(
     public fun transformNode(node: ClassNode): Outcome {
         val errors = mutableListOf<String>()
         val warnings = mutableListOf<String>()
+        // Package filters scope the whole class out — annotations and markers alike are skipped.
+        if (!packageAllowed(node.name)) return Outcome(false, errors, warnings)
         val classObfuscated = (node.visibleAnnotations to node.invisibleAnnotations)
             .has(obfuscateDescriptor)
 
@@ -164,6 +169,8 @@ public class StringVeilTransformer(
                 }
 
                 if (value.isEmpty()) continue
+                // minStringLength applies to annotation-scoped literals; an explicit marker always wins.
+                if (value.length < minStringLength) continue
                 val hide = if (
                     next is FieldInsnNode &&
                     (next.opcode == Opcodes.PUTFIELD || next.opcode == Opcodes.PUTSTATIC)
@@ -218,6 +225,13 @@ public class StringVeilTransformer(
             owner == markerInternalName &&
             name == MARKER_METHOD &&
             desc == MARKER_DESC
+
+    private fun packageAllowed(internalName: String): Boolean {
+        val pkg = internalName.substringBeforeLast('/', "").replace('/', '.')
+        if (excludePackages.any { pkg == it || pkg.startsWith("$it.") }) return false
+        if (includePackages.isEmpty()) return true
+        return includePackages.any { pkg == it || pkg.startsWith("$it.") }
+    }
 
     private companion object {
         const val STRING_TYPE = "Ljava/lang/String;"

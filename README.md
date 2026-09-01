@@ -82,12 +82,19 @@ stringVeil {
     enabled = true
     failOnSecretLikeLiterals = false
     // seed = 1234L // set for reproducible, cacheable builds; omit to randomize every build
+    // minStringLength = 8 // skip annotation-scoped literals shorter than this
+    // includePackages = listOf("com.example.secret") // only these packages (empty = all)
+    // excludePackages = listOf("com.example.generated") // never these packages
+    // includeVariants = listOf("release") // Android only: only these build variants (empty = all)
 }
 ```
 
 `failOnSecretLikeLiterals` turns warnings for credential-shaped selected strings into build errors.
 `seed`, when set, makes obfuscation a deterministic function of the source position, so identical
 source produces identical containers; left unset, every build randomizes each container.
+`includePackages` / `excludePackages` scope obfuscation to (or away from) whole packages by prefix,
+`minStringLength` skips short annotation-scoped literals (an explicit `obfuscate("...")` always wins),
+and `includeVariants` limits obfuscation to named Android build variants.
 The annotation parameters `method`, `methods`, `repetitions`, and `engine` are currently reserved and
 do not alter the transform.
 

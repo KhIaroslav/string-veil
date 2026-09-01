@@ -9,6 +9,10 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Filter settings: `includePackages` / `excludePackages` scope obfuscation to (or away from) whole
+  packages by prefix, `minStringLength` skips annotation-scoped literals shorter than a threshold (an
+  explicit `obfuscate("...")` marker still obfuscates), and Android `includeVariants` limits
+  obfuscation to named build variants.
 - A `stringVeil { seed = … }` setting that makes obfuscation deterministic: with a fixed seed each
   literal draws from a `Random` seeded by `(seed, file, position)`, so identical source produces
   identical containers (reproducible, cacheable builds). Left unset, every build randomizes each

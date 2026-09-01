@@ -20,12 +20,17 @@ internal object StringVeilAndroidWiring {
             .findByType(AndroidComponentsExtension::class.java) ?: return
         components.onVariants { variant ->
             if (!extension.enabled.getOrElse(true)) return@onVariants
+            val includeVariants = extension.includeVariants.get()
+            if (includeVariants.isNotEmpty() && variant.name !in includeVariants) return@onVariants
             val obfuscate = project.tasks.register(
                 "stringVeilObfuscate" + variant.name.replaceFirstChar { it.uppercase() },
                 StringVeilTransformClassesTask::class.java,
             ) { task ->
                 task.failOnSecretLike.set(extension.failOnSecretLikeLiterals)
                 task.seed.set(extension.seed)
+                task.includePackages.set(extension.includePackages)
+                task.excludePackages.set(extension.excludePackages)
+                task.minStringLength.set(extension.minStringLength)
             }
             variant.artifacts
                 .forScope(ScopedArtifacts.Scope.PROJECT)
