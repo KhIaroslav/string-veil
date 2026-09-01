@@ -8,7 +8,7 @@ plaintext literals in compiled bytecode with randomized containers and restores 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.khstov.stringveil/gradle-plugin.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.khstov.stringveil/gradle-plugin)
 [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/io.github.khstov.string-veil)](https://plugins.gradle.org/plugin/io.github.khstov.string-veil)
 
-> **Status: initial development (`0.1.0`).** The public API and container format may change between
+> **Status: initial development (`0.2.0`).** The public API and container format may change between
 > `0.x` releases.
 
 ## Quick start
@@ -37,7 +37,7 @@ Apply the plugin:
 
 ```kotlin
 plugins {
-    id("io.github.khstov.string-veil") version "0.1.0"
+    id("io.github.khstov.string-veil") version "0.2.0"
 }
 ```
 

@@ -7,6 +7,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-01
+
 ### Added
 
 - Filter settings: `includePackages` / `excludePackages` scope obfuscation to (or away from) whole
@@ -53,5 +55,6 @@ First release. The container format and public API may change between `0.x` rele
 - Signed Maven Central and Gradle Plugin Portal publication, SLSA build-provenance attestations, an
   SPDX SBOM, pinned GitHub Actions, and reproducible archive metadata.
 
-[Unreleased]: https://github.com/khstov/string-veil/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/khstov/string-veil/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/khstov/string-veil/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/khstov/string-veil/releases/tag/v0.1.0
