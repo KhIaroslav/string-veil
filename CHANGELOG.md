@@ -7,6 +7,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A `stringVeil { seed = … }` setting that makes obfuscation deterministic: with a fixed seed each
+  literal draws from a `Random` seeded by `(seed, file, position)`, so identical source produces
+  identical containers (reproducible, cacheable builds). Left unset, every build randomizes each
+  container as before.
+
 ### Changed
 
 - The JVM integration runs in a dedicated `stringVeilObfuscateJvm` task instead of a `classes.doLast`

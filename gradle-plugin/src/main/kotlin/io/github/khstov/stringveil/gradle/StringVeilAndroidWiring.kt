@@ -25,6 +25,7 @@ internal object StringVeilAndroidWiring {
                 StringVeilTransformClassesTask::class.java,
             ) { task ->
                 task.failOnSecretLike.set(extension.failOnSecretLikeLiterals)
+                task.seed.set(extension.seed)
             }
             variant.artifacts
                 .forScope(ScopedArtifacts.Scope.PROJECT)

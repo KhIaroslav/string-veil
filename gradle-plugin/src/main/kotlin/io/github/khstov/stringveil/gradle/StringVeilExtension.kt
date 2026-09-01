@@ -14,6 +14,13 @@ public abstract class StringVeilExtension {
      */
     public abstract val failOnSecretLikeLiterals: Property<Boolean>
 
+    /**
+     * Makes obfuscation deterministic. Left unset, each build randomizes every container (maximum
+     * diversity). Set to any fixed value for reproducible, cacheable builds: identical source then
+     * produces identical containers.
+     */
+    public abstract val seed: Property<Long>
+
     init {
         enabled.convention(true)
         failOnSecretLikeLiterals.convention(false)

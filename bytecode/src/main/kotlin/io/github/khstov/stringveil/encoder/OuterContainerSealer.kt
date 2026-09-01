@@ -21,14 +21,14 @@ import io.github.khstov.stringveil.format.StringVeilFormat.mix32
 import io.github.khstov.stringveil.format.StringVeilFormat.outerVariant
 import io.github.khstov.stringveil.format.StringVeilFormat.roundFunction
 import io.github.khstov.stringveil.format.StringVeilFormat.storageMask
-import java.security.SecureRandom
+import java.util.Random
 
 /**
  * Seals pipeline bytes into the randomized outer container: an ARX block cipher over the padded
  * body, masked key material and metadata, and a sparse coprime permutation into a decoy-filled
  * integer array. The inverse lives in the runtime `OuterContainer`.
  */
-internal class OuterContainerSealer(private val random: SecureRandom) {
+internal class OuterContainerSealer(private val random: Random) {
     fun seal(pipeline: ByteArray, context: EncryptionContext): IntArray {
         val seedA = random.nextInt() xor mix32(context.fileName.hashCode())
         val seedB = random.nextInt() xor mix32(context.startOffset)
