@@ -109,7 +109,6 @@ plugin for sensitive-looking values.
   that must be selected with `obfuscate("...")`.
 - Decoding creates a new `String`; use value equality rather than reference equality.
 - Obfuscation adds runtime and size overhead. Avoid hot loops and benchmark large deployments.
-- JVM consumer builds do not currently support Gradle's configuration cache.
 - Strings used as reflective names, JNI symbols, or resource identifiers may require R8/ProGuard
   keep rules.
 
