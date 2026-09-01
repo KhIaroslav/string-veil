@@ -41,7 +41,8 @@ import org.objectweb.asm.tree.MethodInsnNode
  * their runtime without modifying the annotations module.
  */
 public class StringVeilTransformer(
-    private val cipher: StringCipher = LayeredStringCipher(),
+    seed: Long? = null,
+    private val cipher: StringCipher = LayeredStringCipher(seed = seed),
     private val obfuscateDescriptor: String = OBFUSCATE_DESCRIPTOR,
     private val doNotObfuscateDescriptor: String = DO_NOT_OBFUSCATE_DESCRIPTOR,
     private val decoderInternalName: String = STRING_DECODER,

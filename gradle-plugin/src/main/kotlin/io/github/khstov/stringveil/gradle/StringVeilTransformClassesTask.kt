@@ -45,9 +45,14 @@ public abstract class StringVeilTransformClassesTask : DefaultTask() {
     @get:Input
     public abstract val failOnSecretLike: Property<Boolean>
 
+    @get:Input
+    @get:Optional
+    public abstract val seed: Property<Long>
+
     @TaskAction
     public fun transform() {
         val transformer = StringVeilTransformer(
+            seed = seed.orNull,
             decoderInternalName = NATIVE_DECODER,
             failOnSecretLike = failOnSecretLike.get(),
         )

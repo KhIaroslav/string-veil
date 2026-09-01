@@ -7,6 +7,7 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
@@ -31,10 +32,17 @@ public abstract class StringVeilTransformJvmClassesTask : DefaultTask() {
     @get:Input
     public abstract val failOnSecretLike: Property<Boolean>
 
+    @get:Input
+    @get:Optional
+    public abstract val seed: Property<Long>
+
     @TaskAction
     public fun transform() {
         if (!obfuscationEnabled.get()) return
-        val transformer = StringVeilTransformer(failOnSecretLike = failOnSecretLike.get())
+        val transformer = StringVeilTransformer(
+            seed = seed.orNull,
+            failOnSecretLike = failOnSecretLike.get(),
+        )
         val errors = mutableListOf<String>()
         classesDirs.files.filter { it.isDirectory }.forEach { root ->
             root.walkTopDown().filter { it.isFile && it.extension == "class" }.forEach { classFile ->

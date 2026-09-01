@@ -14,7 +14,7 @@ import io.github.khstov.stringveil.format.StringVeilFormat.streamByte
 import io.github.khstov.stringveil.format.StringVeilFormat.xorStream
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
-import java.security.SecureRandom
+import java.util.Random
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -25,7 +25,7 @@ import javax.crypto.spec.SecretKeySpec
  * AES-CTR) and serializes them, with their per-layer parameters, into a self-describing byte stream.
  * The inverse lives in the runtime `PipelineDecoder`.
  */
-internal class PipelineEncoder(private val random: SecureRandom) {
+internal class PipelineEncoder(private val random: Random) {
     fun encode(value: ByteArray, config: ProtectionConfig): ByteArray {
         val layers = ArrayList<EncodedLayer>(config.repetitions)
         var transformed = value.copyOf()
@@ -164,6 +164,6 @@ private fun ProtectionMethod.asPipelineMethod(): PipelineMethod? =
         -> null
     }
 
-private fun <T> List<T>.random(random: SecureRandom): T = get(random.nextInt(size))
+private fun <T> List<T>.random(random: Random): T = get(random.nextInt(size))
 
 private val PIPELINE_METHODS = PipelineMethod.entries

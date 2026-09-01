@@ -81,10 +81,13 @@ Optional Gradle settings:
 stringVeil {
     enabled = true
     failOnSecretLikeLiterals = false
+    // seed = 1234L // set for reproducible, cacheable builds; omit to randomize every build
 }
 ```
 
 `failOnSecretLikeLiterals` turns warnings for credential-shaped selected strings into build errors.
+`seed`, when set, makes obfuscation a deterministic function of the source position, so identical
+source produces identical containers; left unset, every build randomizes each container.
 The annotation parameters `method`, `methods`, `repetitions`, and `engine` are currently reserved and
 do not alter the transform.
 
