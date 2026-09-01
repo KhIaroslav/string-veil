@@ -40,7 +40,7 @@ val generateDifferentialCorpus by tasks.registering(JavaExec::class) {
     description = "Encodes the differential corpus consumed by :native-differential."
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("io.github.khiaroslav.stringveil.encoder.DifferentialCorpusGeneratorKt")
+    mainClass.set("io.github.khstov.stringveil.encoder.DifferentialCorpusGeneratorKt")
 
     val corpusFile = layout.buildDirectory.file("differential/corpus.bin").get().asFile
     outputs.file(corpusFile)
@@ -53,5 +53,5 @@ tasks.register<JavaExec>("benchmark") {
     description = "Reports String Veil container-size overhead and decode cost."
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("io.github.khiaroslav.stringveil.encoder.BenchmarkReportKt")
+    mainClass.set("io.github.khstov.stringveil.encoder.BenchmarkReportKt")
 }

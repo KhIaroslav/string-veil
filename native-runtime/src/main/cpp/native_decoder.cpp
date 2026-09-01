@@ -603,7 +603,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
         return JNI_ERR;
     }
     jclass decoder = env->FindClass(
-        "io/github/khiaroslav/stringveil/runtime/NativeStringDecoder"
+        "io/github/khstov/stringveil/runtime/NativeStringDecoder"
     );
     if (decoder == nullptr) return JNI_ERR;
     JNINativeMethod method = {

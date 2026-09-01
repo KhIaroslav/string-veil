@@ -7,7 +7,7 @@ body:
       value: |
         Please keep in mind String Veil's scope: it is a **build-time string obfuscator**, not an
         encryption or secrets-management tool. Requests to make it a secure secret store are out of
-        scope — see [SECURITY.md](https://github.com/KhIaroslav/string-veil/blob/main/SECURITY.md).
+        scope — see [SECURITY.md](https://github.com/khstov/string-veil/blob/main/SECURITY.md).
   - type: textarea
     id: problem
     attributes:

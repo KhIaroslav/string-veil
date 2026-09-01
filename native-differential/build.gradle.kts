@@ -128,7 +128,7 @@ val nativeDifferentialTest by tasks.registering(JavaExec::class) {
     inputs.file(corpusPath)
 
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("io.github.khiaroslav.stringveil.differential.NativeDifferentialRunner")
+    mainClass.set("io.github.khstov.stringveil.differential.NativeDifferentialRunner")
     args(corpusPath)
 
     if (nativeBuildable) {
@@ -160,7 +160,7 @@ val nativeFuzzSeeds by tasks.registering(JavaExec::class) {
     inputs.file(corpusPath)
     outputs.dir(fuzzSeedsDir)
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("io.github.khiaroslav.stringveil.differential.FuzzSeedWriter")
+    mainClass.set("io.github.khstov.stringveil.differential.FuzzSeedWriter")
     args(corpusPath, fuzzSeedsDir.absolutePath)
 }
 

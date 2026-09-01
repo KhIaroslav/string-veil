@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for taking the time to file a bug. Please **do not** report security
         vulnerabilities here — follow the private process in
-        [SECURITY.md](https://github.com/KhIaroslav/string-veil/blob/main/SECURITY.md) instead.
+        [SECURITY.md](https://github.com/khstov/string-veil/blob/main/SECURITY.md) instead.
   - type: textarea
     id: what-happened
     attributes:
@@ -30,7 +30,7 @@ body:
     id: string-veil-version
     attributes:
       label: String Veil version
-      placeholder: "0.1.0-alpha02"
+      placeholder: "0.1.0"
     validations:
       required: true
   - type: input
