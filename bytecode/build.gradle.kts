@@ -50,8 +50,9 @@ val generateDifferentialCorpus by tasks.registering(JavaExec::class) {
 // Reports container-size overhead and decode throughput. On-demand, not part of `check`.
 tasks.register<JavaExec>("benchmark") {
     group = "verification"
-    description = "Reports String Veil container-size overhead and decode cost."
+    description = "Writes String Veil size overhead, encode, and decode cost to BENCHMARKS.md."
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("io.github.khstov.stringveil.encoder.BenchmarkReportKt")
+    systemProperty("stringVeil.benchmarkOutput", rootProject.file("BENCHMARKS.md").absolutePath)
 }
