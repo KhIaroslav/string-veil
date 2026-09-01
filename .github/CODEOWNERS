@@ -1,11 +1,11 @@
 # Default owner for everything in this repository.
-* @KhIaroslav
+* @khstov
 
 # Security-sensitive areas — always request the maintainer's review.
-/SECURITY.md @KhIaroslav
-/.github/ @KhIaroslav
-/annotations/ @KhIaroslav
-/bytecode/ @KhIaroslav
-/gradle-plugin/ @KhIaroslav
-/runtime/ @KhIaroslav
-/native-runtime/ @KhIaroslav
+/SECURITY.md @khstov
+/.github/ @khstov
+/annotations/ @khstov
+/bytecode/ @khstov
+/gradle-plugin/ @khstov
+/runtime/ @khstov
+/native-runtime/ @khstov

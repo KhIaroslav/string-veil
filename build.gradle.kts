@@ -13,7 +13,7 @@ plugins {
 }
 
 allprojects {
-    group = "io.github.khiaroslav.stringveil"
+    group = "io.github.khstov.stringveil"
     version = providers.gradleProperty("VERSION_NAME").get()
 }
 
@@ -43,7 +43,7 @@ subprojects {
                 description.set(
                     "Selective build-time string obfuscation for Kotlin, Java, JVM, and Android",
                 )
-                url.set("https://github.com/KhIaroslav/string-veil")
+                url.set("https://github.com/khstov/string-veil")
                 inceptionYear.set("2026")
                 licenses {
                     license {
@@ -54,22 +54,22 @@ subprojects {
                 }
                 developers {
                     developer {
-                        id.set("KhIaroslav")
+                        id.set("khstov")
                         name.set("Iaroslav")
-                        email.set("KhIaroslav@users.noreply.github.com")
-                        organization.set("KhIaroslav")
-                        organizationUrl.set("https://github.com/KhIaroslav")
-                        url.set("https://github.com/KhIaroslav")
+                        email.set("khstov@users.noreply.github.com")
+                        organization.set("khstov")
+                        organizationUrl.set("https://github.com/khstov")
+                        url.set("https://github.com/khstov")
                     }
                 }
                 scm {
-                    connection.set("scm:git:https://github.com/KhIaroslav/string-veil.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/KhIaroslav/string-veil.git")
-                    url.set("https://github.com/KhIaroslav/string-veil")
+                    connection.set("scm:git:https://github.com/khstov/string-veil.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/khstov/string-veil.git")
+                    url.set("https://github.com/khstov/string-veil")
                 }
                 issueManagement {
                     system.set("GitHub")
-                    url.set("https://github.com/KhIaroslav/string-veil/issues")
+                    url.set("https://github.com/khstov/string-veil/issues")
                 }
             }
         }

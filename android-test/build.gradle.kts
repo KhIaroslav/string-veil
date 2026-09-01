@@ -5,11 +5,11 @@ plugins {
     id("com.android.library") version "8.7.3"
     id("org.jetbrains.kotlin.android") version "2.3.21"
     // Resolved from the first-priority mavenLocal repository; Android emits native-bridge calls.
-    id("io.github.khiaroslav.string-veil") version "0.1.0-alpha02"
+    id("io.github.khstov.string-veil") version "0.1.0"
 }
 
 android {
-    namespace = "io.github.khiaroslav.stringveil.androidtest"
+    namespace = "io.github.khstov.stringveil.androidtest"
     compileSdk = 34
 
     defaultConfig {

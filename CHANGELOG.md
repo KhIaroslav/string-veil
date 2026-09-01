@@ -7,89 +7,35 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
+## [0.1.0] — 2026-09-01
 
-- An `obfuscate("...")` marker function (`io.github.khiaroslav.stringveil.obfuscate`) that protects an
-  individual string literal at its exact call site — including forms the declaration annotation cannot
-  reach: `by lazy { }` / delegated properties, `companion object` / static initializers, custom
-  getters, interpolation fragments, and sub-expressions. Only a direct string literal is supported;
-  the build warns (fail-closed) when the marker is applied to a non-literal. When the plugin is not
-  applied it is an identity function.
-
-### Fixed
-
-- Property-level `@Obfuscate` on a computed property (custom getter, no backing field) now obfuscates
-  the literal in the getter body; previously the annotation folded onto the (absent) backing field
-  only and left the getter untouched.
-
-## [0.1.0-alpha02] — 2026-08-31
-
-### Changed
-
-- Android project classes are transformed through AGP's `ScopedArtifacts` classes pipeline, producing
-  one rebuilt class archive for the selected variant.
-- Local Android integration tests resolve `mavenLocal()` before public repositories, ensuring a
-  locally published build is tested even when the same version already exists remotely.
-- Documentation and API comments now distinguish implemented bytecode behavior from reserved
-  per-annotation settings and list the currently unsupported bytecode shapes.
-- Maven and Gradle Plugin Portal descriptions now include Java, JVM, and Android support.
-- Gradle Plugin Portal metadata no longer claims configuration-cache compatibility while the JVM
-  integration still mutates the `classes` output in a task action.
-- The release workflow marks SemVer pre-release tags as GitHub pre-releases.
-- The published artifacts are built with Kotlin 1.9.24 instead of 2.3.21, lowering the
-  `kotlin-stdlib` version consumers inherit through the POM.
-- The published `annotations`, `runtime`, and native-bridge classes now target Java 8 bytecode
-  (down from Java 17), and the published module metadata declares `org.gradle.jvm.version` 8, so
-  consumers on JDK 8 or 11 are no longer forced onto JDK 17. The build still uses a JDK 17 toolchain.
-
-### Fixed
-
-- Obfuscated string literals no longer remain in the compiled Android class files or a published
-  AAR. AGP's ASM instrumentation writes through a reader-backed `ClassWriter` that copies the
-  original constant pool wholesale, so removing the `LDC` left the plaintext orphaned but still
-  present in the pool; the `ScopedArtifacts` classes transform re-serializes through a fresh writer
-  that rebuilds the pool from live references. (A dexed APK was already clean because D8 rebuilds the
-  string pool, but a published AAR was not.) A build-time check fails the Android build if the
-  literal is ever found in the packaged AAR.
-
-## [0.1.0-alpha01] — 2026-08-28
-
-First public pre-release. The container format and public API may change between pre-release
-versions.
+First release. The container format and public API may change between `0.x` releases.
 
 ### Added
 
-- Selective declaration annotations: `@Obfuscate` and `@DoNotObfuscate`.
-- An ASM bytecode transform for direct string constants in supported Kotlin and Java classes.
-- A randomized reversible pipeline using bit-shift, XOR, Base64, and AES/CTR layers, sealed in a
+- Selective, build-time string obfuscation for Kotlin, Java, and Android: an ASM bytecode transform
+  rewrites selected string literals in the compiled classes and restores them at runtime, independent
+  of the Kotlin compiler version.
+- `@Obfuscate` and `@DoNotObfuscate` declaration annotations for direct string literals owned by a
+  class, function, property (including custom getters), or field.
+- An `obfuscate("...")` marker function for one exact call site — including forms an annotation cannot
+  reach: `by lazy { }` / delegated properties, `companion object` / static initializers, interpolation
+  fragments, and sub-expressions. Only a direct literal is supported; the build warns (fail-closed)
+  when it is applied to a non-literal, and it is an identity function when the plugin is absent.
+- A randomized reversible container pipeline (bit-shift, XOR, Base64, and AES/CTR layers) sealed in a
   per-literal integer container with masked metadata, padding, permutation, decoy words, and a
-  non-cryptographic corruption checksum.
-- JVM and Android Gradle integration. JVM projects use the portable decoder; Android projects call a
-  JNI decoder with a JVM fallback when the native library is unavailable.
-- Native Android decoder binaries for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
-- Warnings for annotated literals that resemble common credentials, with
-  `stringVeil.failOnSecretLikeLiterals` to turn warnings into build errors.
-- JVM round-trip tests, JVM/C++ differential tests, Android emulator coverage, and a native
-  ASan/UBSan mutation harness for the outer-container parser.
-- A runnable JVM sample, aggregated Dokka API documentation, issue/PR templates, a security policy,
-  and contribution guidelines.
-- Signed Maven Central and Gradle Plugin Portal publication, build-provenance attestations, an SPDX
-  SBOM, pinned GitHub Actions, and reproducible archive metadata.
-- The `:bytecode:benchmark` report for container-size overhead and JVM decode timing.
+  corruption checksum.
+- Gradle integration for JVM and Android modules: JVM classes are rewritten after compilation, and
+  Android project classes pass through AGP's `ScopedArtifacts` pipeline before packaging. The plugin
+  adds the annotations and the appropriate runtime automatically.
+- A native Android decoder for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`, with a JVM fallback
+  when the native library is unavailable.
+- A compile-time warning for credential-shaped literals, with `stringVeil.failOnSecretLikeLiterals`
+  to turn it into a build error.
+- Published `annotations` and `runtime` target Java 8 bytecode and are built with Kotlin 1.9.24, so
+  consumers on JDK 8 or newer and any Kotlin version are supported.
+- Signed Maven Central and Gradle Plugin Portal publication, SLSA build-provenance attestations, an
+  SPDX SBOM, pinned GitHub Actions, and reproducible archive metadata.
 
-### Fixed
-
-- Android class initialization falls back to the JVM decoder instead of failing with
-  `UnsatisfiedLinkError` when the native library cannot be loaded.
-
-### Known limitations
-
-- The bytecode transform does not yet read the annotation's `method`, `methods`, `repetitions`, or
-  `engine` values; it uses the default pipeline and selects the decoder from the project type.
-- `const val`, complex property initializers, custom getters, delegated properties, generated
-  lambdas, nested classes, interpolated-template recipes, resources, assets, and `BuildConfig` are
-  not all covered. See the README for the exact current limitations.
-
-[Unreleased]: https://github.com/KhIaroslav/string-veil/compare/v0.1.0-alpha02...HEAD
-[0.1.0-alpha02]: https://github.com/KhIaroslav/string-veil/compare/v0.1.0-alpha01...v0.1.0-alpha02
-[0.1.0-alpha01]: https://github.com/KhIaroslav/string-veil/releases/tag/v0.1.0-alpha01
+[Unreleased]: https://github.com/khstov/string-veil/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/khstov/string-veil/releases/tag/v0.1.0

@@ -7,7 +7,7 @@ By participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Report an issue
 
-- Use the provided [GitHub issue templates](https://github.com/KhIaroslav/string-veil/issues) for bugs
+- Use the provided [GitHub issue templates](https://github.com/khstov/string-veil/issues) for bugs
   and feature requests. Include the String Veil, Gradle, JDK, Kotlin or Java, and—when applicable—AGP,
   Android SDK, minSdk, and ABI versions.
 - Report vulnerabilities privately through [SECURITY.md](SECURITY.md). Do not include vulnerability
@@ -31,7 +31,7 @@ Set `STRING_VEIL_NDK_HOME` or `stringVeilNdkDir` when the NDK cannot be discover
 ## Build
 
 ```bash
-git clone https://github.com/KhIaroslav/string-veil.git
+git clone https://github.com/khstov/string-veil.git
 cd string-veil
 
 ./gradlew test \

@@ -29,14 +29,14 @@ dependencies {
 }
 
 gradlePlugin {
-    website.set("https://github.com/KhIaroslav/string-veil")
-    vcsUrl.set("https://github.com/KhIaroslav/string-veil.git")
+    website.set("https://github.com/khstov/string-veil")
+    vcsUrl.set("https://github.com/khstov/string-veil.git")
 
     plugins {
         create("stringVeil") {
-            id = "io.github.khiaroslav.string-veil"
+            id = "io.github.khstov.string-veil"
             implementationClass =
-                "io.github.khiaroslav.stringveil.gradle.StringVeilGradlePlugin"
+                "io.github.khstov.stringveil.gradle.StringVeilGradlePlugin"
             displayName = "String Veil"
             description = "Selective build-time string obfuscation for Kotlin, Java, JVM, and Android"
             tags.set(listOf("kotlin", "java", "android", "obfuscation", "bytecode"))

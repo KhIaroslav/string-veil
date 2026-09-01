@@ -13,10 +13,9 @@ against is essential to using it safely.
 - **Low-effort scraping at scale.** Recovering selected strings requires locating the generated
   containers and applying the shipped decoder rather than reading the original literals directly.
 
-See the README's **Current limitations** section before relying on a declaration shape. Complex
-property initializers, custom getters, generated lambdas, nested classes, and other compiler-generated
-forms are not all covered yet. Inspect the final artifact when absence of a particular plaintext
-matters.
+See the README's **Limitations** section before relying on a declaration shape. Annotation scope does
+not cross into generated lambdas or nested classes; use the per-literal marker where appropriate and
+inspect the final artifact when absence of a particular plaintext matters.
 
 ### What String Veil does NOT protect against
 
@@ -72,19 +71,19 @@ Published artifacts are signed and distributed by a release pipeline with the fo
 
 ## Supported versions
 
-String Veil is in early development. Only the latest published version receives security fixes.
+String Veil is in initial development. Only the latest published release receives security fixes.
 
-| Version        | Supported |
-|----------------|-----------|
-| `0.1.0-alphaNN`| ✅ latest pre-release only |
-| older          | ❌         |
+| Version | Supported |
+|---|---|
+| latest `0.1.x` release | ✅ |
+| earlier releases and pre-releases | ❌ |
 
 ## Reporting a vulnerability
 
 **Please do not report security vulnerabilities through public GitHub issues, discussions, or pull
 requests.**
 
-Report privately through GitHub's **[private vulnerability reporting](https://github.com/KhIaroslav/string-veil/security/advisories/new)**
+Report privately through GitHub's **[private vulnerability reporting](https://github.com/khstov/string-veil/security/advisories/new)**
 ("Report a vulnerability" on the repository's Security tab). If that channel is unavailable, open a
 minimal public issue that says only "requesting a private security contact" — without any details —
 so a maintainer can reach out.

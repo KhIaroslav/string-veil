@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     application
     // Resolved from the included build (`..`); no version needed.
-    id("io.github.khiaroslav.string-veil")
+    id("io.github.khstov.string-veil")
 }
 
 kotlin {
@@ -10,5 +10,5 @@ kotlin {
 }
 
 application {
-    mainClass.set("io.github.khiaroslav.stringveil.sample.MainKt")
+    mainClass.set("io.github.khstov.stringveil.sample.MainKt")
 }
