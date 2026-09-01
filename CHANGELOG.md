@@ -7,6 +7,11 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The JVM integration runs in a dedicated `stringVeilObfuscateJvm` task instead of a `classes.doLast`
+  action, so JVM consumer builds now support Gradle's configuration cache.
+
 ## [0.1.0] — 2026-09-01
 
 First release. The container format and public API may change between `0.x` releases.

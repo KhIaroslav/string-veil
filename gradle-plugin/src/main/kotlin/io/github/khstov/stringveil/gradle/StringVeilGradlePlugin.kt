@@ -1,8 +1,5 @@
 package io.github.khstov.stringveil.gradle
 
-import io.github.khstov.stringveil.bytecode.StringVeilTransformer
-import java.io.File
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSetContainer
@@ -41,35 +38,17 @@ public class StringVeilGradlePlugin : Plugin<Project> {
     private fun wireJvm(target: Project, extension: StringVeilExtension) {
         val sourceSets = target.extensions.getByType(SourceSetContainer::class.java)
         val classesDirs = sourceSets.getByName("main").output.classesDirs
-        val failOnSecretLike = extension.failOnSecretLikeLiterals
-        val enabled = extension.enabled
-        target.tasks.named("classes").configure { classes ->
-            classes.doLast {
-                if (!enabled.getOrElse(true)) return@doLast
-                val transformer = StringVeilTransformer(
-                    failOnSecretLike = failOnSecretLike.getOrElse(false),
-                )
-                val logger = target.logger
-                classesDirs.files.forEach { dir -> obfuscate(transformer, dir, logger) }
-            }
+        val obfuscate = target.tasks.register(
+            "stringVeilObfuscateJvm",
+            StringVeilTransformJvmClassesTask::class.java,
+        ) { task ->
+            // classesDirs carries the compile task dependencies, so the task runs after compilation.
+            task.classesDirs.from(classesDirs)
+            task.obfuscationEnabled.set(extension.enabled)
+            task.failOnSecretLike.set(extension.failOnSecretLikeLiterals)
         }
-    }
-
-    private fun obfuscate(
-        transformer: StringVeilTransformer,
-        dir: File,
-        logger: org.gradle.api.logging.Logger,
-    ) {
-        if (!dir.isDirectory) return
-        dir.walkTopDown().filter { it.isFile && it.extension == "class" }.forEach { classFile ->
-            val original = classFile.readBytes()
-            val result = transformer.transform(original)
-            result.warnings.forEach { logger.warn("string-veil: $it") }
-            if (result.errors.isNotEmpty()) {
-                throw GradleException("string-veil: " + result.errors.joinToString("\n"))
-            }
-            if (result.bytes !== original) classFile.writeBytes(result.bytes)
-        }
+        // Everything that consumes `classes` (jar, test, run) then sees the transformed output.
+        target.tasks.named("classes").configure { it.dependsOn(obfuscate) }
     }
 
     private fun addConsumerDependencies(target: Project, native: Boolean) {
