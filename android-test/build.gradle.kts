@@ -5,7 +5,7 @@ plugins {
     id("com.android.library") version "8.7.3"
     id("org.jetbrains.kotlin.android") version "2.3.21"
     // Resolved from the first-priority mavenLocal repository; Android emits native-bridge calls.
-    id("io.github.khstov.string-veil") version "0.2.0"
+    id("io.github.khstov.string-veil") version "0.2.1"
 }
 
 android {
