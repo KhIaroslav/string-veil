@@ -7,6 +7,15 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `@Obfuscate` now protects properties whose accessor name is mangled or non-trivially derived:
+  `internal` / `@PublishedApi internal` properties (whose `$annotations` holder carries a `$<module>`
+  suffix), names with a leading acronym (`APIkey`, `URLString`), and `PascalCase` names. These
+  previously matched no backing field, so the annotation was silently ignored and the literal stayed
+  in the bytecode. The field is now matched to its holder by building the accessor name from the field
+  (deterministic) instead of recovering the field name from the accessor.
+
 ## [0.2.0] — 2026-09-01
 
 ### Added
