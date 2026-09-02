@@ -83,32 +83,28 @@ public class StringVeilTransformer(
         val classObfuscated = (node.visibleAnnotations to node.invisibleAnnotations)
             .has(obfuscateDescriptor)
 
-        // Kotlin does not put property annotations on the JVM field; it emits a synthetic
-        // `get<Name>$annotations()` method that carries them. Fold those back onto the property name.
-        val propertyObfuscated = HashSet<String>()
-        val propertyExcluded = HashSet<String>()
-        // A computed property (custom getter, no backing field) keeps its literal in the accessor
-        // method body rather than a field initializer, so record the accessor to obfuscate directly.
-        // `get<Name>$annotations()` mirrors the accessor `get<Name>()` exactly, so drop the suffix.
-        val obfuscatedAccessors = HashSet<String>()
-        for (method in node.methods) {
-            val property = kotlinPropertyName(method.name) ?: continue
+        // Kotlin puts property annotations on a synthetic `get<Name>$annotations()` holder, not on the
+        // JVM field, and `internal` / `@PublishedApi internal` accessors are name-mangled with a
+        // trailing `$<module>` segment. Match a field to its holder by building the accessor name from
+        // the field (deterministic) rather than recovering the field name from the accessor, which
+        // would have to replay Kotlin's decapitalization and mangling rules.
+        val holders = node.methods.mapNotNull { method ->
+            val base = method.name.removeSuffix("\$annotations")
+            if (base == method.name) return@mapNotNull null
             val annotations = method.visibleAnnotations to method.invisibleAnnotations
-            when {
-                annotations.has(doNotObfuscateDescriptor) -> propertyExcluded += property
-                annotations.has(obfuscateDescriptor) -> {
-                    propertyObfuscated += property
-                    obfuscatedAccessors += method.name.removeSuffix("\$annotations")
-                }
-            }
+            PropertyHolder(base, annotations.has(obfuscateDescriptor), annotations.has(doNotObfuscateDescriptor))
         }
+        // A computed property (custom getter, no backing field) keeps its literal in the accessor body;
+        // the holder base is the accessor method name, so obfuscating it directly covers that case.
+        val obfuscatedAccessors = holders.filter { it.obfuscate }.mapTo(HashSet()) { it.base }
 
         val obfuscatedFields = HashSet<String>()
         for (field in node.fields) {
             if (field.desc != STRING_TYPE) continue
             val annotations = field.visibleAnnotations to field.invisibleAnnotations
-            val excluded = annotations.has(doNotObfuscateDescriptor) || field.name in propertyExcluded
-            val included = annotations.has(obfuscateDescriptor) || field.name in propertyObfuscated
+            val holder = holderFor(field.name, holders)
+            val excluded = annotations.has(doNotObfuscateDescriptor) || holder?.exclude == true
+            val included = annotations.has(obfuscateDescriptor) || holder?.obfuscate == true
             if (excluded) continue
             if (!(included || classObfuscated)) continue
             if (field.value != null) {
@@ -264,15 +260,21 @@ private fun Pair<List<AnnotationNode>?, List<AnnotationNode>?>.has(descriptor: S
     first?.any { it.desc == descriptor } == true || second?.any { it.desc == descriptor } == true
 
 /** Recovers the property name from Kotlin's synthetic `get<Name>$annotations()` holder method. */
-private fun kotlinPropertyName(methodName: String): String? {
-    val base = methodName.removeSuffix("\$annotations")
-    if (base == methodName) return null
-    val name = when {
-        base.startsWith("get") && base.length > 3 -> base.substring(3)
-        base.startsWith("is") && base.length > 2 -> base.substring(2)
-        else -> base
+private data class PropertyHolder(val base: String, val obfuscate: Boolean, val exclude: Boolean)
+
+/**
+ * Finds the `get<Name>$annotations()` holder for a backing field by building the accessor name from
+ * the field — no decapitalization guesswork. The accessor is `get<Field>` (the field name is the
+ * property name) or the field name itself for an `is`-property, optionally followed by a `$<module>`
+ * mangling segment on `internal` / `@PublishedApi internal` members.
+ */
+private fun holderFor(fieldName: String, holders: List<PropertyHolder>): PropertyHolder? {
+    val getter = "get" + fieldName.replaceFirstChar { it.uppercaseChar() }
+    val isAccessor = fieldName.takeIf { it.startsWith("is") }
+    return holders.firstOrNull { holder ->
+        holder.base == getter || holder.base.startsWith("$getter\$") ||
+            (isAccessor != null && (holder.base == isAccessor || holder.base.startsWith("$isAccessor\$")))
     }
-    return name.replaceFirstChar { it.lowercaseChar() }
 }
 
 private fun String.toDotted(): String = replace('/', '.')

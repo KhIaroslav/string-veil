@@ -225,6 +225,57 @@ class StringVeilKotlinTransformTest {
         }
     }
 
+    @Test
+    fun `obfuscates internal, acronym, and PascalCase property names`() {
+        val root = createTempDirectory("kotlin-name-mangling").toFile()
+        try {
+            val source = root.resolve("Config.kt").apply {
+                writeText(
+                    """
+                    import io.github.khstov.stringveil.annotations.Obfuscate
+
+                    class Config {
+                        @Obfuscate
+                        internal val token = "internal-token-value"
+
+                        @Obfuscate
+                        internal val APIkey = "internal-apikey-value"
+
+                        @Obfuscate
+                        val URLString = "url-string-value"
+
+                        @Obfuscate
+                        val Xid = "xid-pascal-value"
+
+                        val plain = "plain-visible-value"
+                    }
+                    """.trimIndent(),
+                )
+            }
+            val classes = compileKotlin(root, source)
+            transformAll(classes)
+
+            val config = classes.resolve("Config.class").readBytes()
+            listOf(
+                "internal-token-value",
+                "internal-apikey-value",
+                "url-string-value",
+                "xid-pascal-value",
+            ).forEach { secret ->
+                assertFalse(config.containsUtf8(secret), "@Obfuscate property leaked: $secret")
+            }
+            assertTrue(config.containsUtf8("plain-visible-value"), "unannotated property wrongly hidden")
+
+            URLClassLoader(arrayOf(classes.toURI().toURL()), javaClass.classLoader).use { loader ->
+                val configClass = loader.loadClass("Config")
+                val instance = configClass.getDeclaredConstructor().newInstance()
+                assertEquals("url-string-value", configClass.getMethod("getURLString").invoke(instance))
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun transformAll(classesDir: File) {
         val transformer = StringVeilTransformer()
         classesDir.walkTopDown().filter { it.isFile && it.extension == "class" }.forEach { file ->
