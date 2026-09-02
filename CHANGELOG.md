@@ -7,6 +7,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-09-01
+
 ### Fixed
 
 - `@Obfuscate` now protects properties whose accessor name is mangled or non-trivially derived:
@@ -64,6 +66,7 @@ First release. The container format and public API may change between `0.x` rele
 - Signed Maven Central and Gradle Plugin Portal publication, SLSA build-provenance attestations, an
   SPDX SBOM, pinned GitHub Actions, and reproducible archive metadata.
 
-[Unreleased]: https://github.com/khstov/string-veil/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/khstov/string-veil/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/khstov/string-veil/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/khstov/string-veil/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/khstov/string-veil/releases/tag/v0.1.0
